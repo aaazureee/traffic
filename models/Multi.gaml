@@ -244,9 +244,11 @@ species my_node {
 }
 
 species road {
+  float link_length;
   float free_speed;
-  int current_volume;
   int max_capacity;
+  int current_volume min: 0 max: max_capacity;
+  
 
   aspect base {
     draw shape color: #blue width: 2;
