@@ -33,23 +33,25 @@ global {
     point var2 <- rnd({2.0, 4.0}, {2.0, 5.0, 10.0}, 1);
 //    write var2;
 //    write shape;
-    create test1 number: 1;
+    create test1 number: 2;
+    create road with:[shape: line([test1[0], test1[1]])];
   }
 
 }
 
+
+
+
+species road {
+  aspect base {
+    draw shape color: #blue;
+  }
+}
+
 species test1 {
   int a <- 5 update: a - 3 min: 0;
-  reflex {
-   write location; 
-  }
   
-  
-  reflex {
-    location <- {30, 20};
-  }
-  
-  
+
   aspect base {
     draw circle(1) color: #yellow;
   }
@@ -68,6 +70,7 @@ experiment my_experiment type:gui{
   output {
     display my_display {
       species test1 aspect: base;
+      species road aspect: base;
     }
   }
 }

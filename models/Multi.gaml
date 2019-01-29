@@ -7,7 +7,7 @@ global {
   geometry shape <- square(150 #m);
 
   init {
-    add point(10, 10) to: nodesxxxxx;
+    add point(10, 10) to: nodes;
     add point(90, 90) to: nodes;
     add point(40, 20) to: nodes;
     add point(80, 50) to: nodes;
@@ -18,45 +18,51 @@ global {
     add point(120, 20) to: nodes;
     add point(50, 120) to: nodes;
     add point(100, 110) to: nodes;
-    
-    create road {
-      shape <- line([nodes[0], nodes[1]]);
+    loop i from: 0 to: length(nodes) - 1 {
+      create my_node {
+        location <- nodes[i];
+      }
+
     }
 
     create road {
-      shape <- line([nodes[1], nodes[2]]);
+      shape <- line([my_node[0], my_node[1]]);
     }
 
     create road {
-      shape <- line([nodes[2], nodes[3]]);
+      shape <- line([my_node[1], my_node[2]]);
     }
 
     create road {
-      shape <- line([nodes[3], nodes[4]]);
+      shape <- line([my_node[2], my_node[3]]);
     }
 
     create road {
-      shape <- line([nodes[4], nodes[5]]);
+      shape <- line([my_node[3], my_node[4]]);
     }
-    
+
     create road {
-      shape <- line([nodes[5], nodes[6]]);
+      shape <- line([my_node[4], my_node[5]]);
     }
-    
+
     create road {
-      shape <- line([nodes[6], nodes[7]]);
+      shape <- line([my_node[5], my_node[6]]);
     }
-    
+
     create road {
-      shape <- line([nodes[7], nodes[8]]);
+      shape <- line([my_node[6], my_node[7]]);
     }
-    
+
     create road {
-      shape <- line([nodes[8], nodes[9]]);
+      shape <- line([my_node[7], my_node[8]]);
     }
-    
+
     create road {
-      shape <- line([nodes[9], nodes[10]]);
+      shape <- line([my_node[8], my_node[9]]);
+    }
+
+    create road {
+      shape <- line([my_node[9], my_node[10]]);
     }
 
     my_graph <- as_edge_graph(road) with_weights (road as_map (each::each.shape.perimeter));
@@ -135,13 +141,13 @@ global {
     }
 
   }
-  
+
   // TEST epsilon value
   bool test_epsilon <- false;
+
   reflex stop when: test_epsilon = true {
     do pause;
   }
-
 
 }
 
@@ -162,7 +168,7 @@ species people skills: [moving] {
   reflex smart_move {
     point next_node <- point(fixed_vertices[next_node_index]);
     float distance_to_next_node <- self distance_to next_node;
-    float epsilon <- 10^-5;
+    float epsilon <- 10 ^ -5;
     write "DIST:" + distance_to_next_node;
     if (distance_to_next_node < epsilon) {
       write "EPSILON--------------------------------";
@@ -182,10 +188,10 @@ species people skills: [moving] {
         is_on_node <- true;
         next_node_index <- next_node_index + 1;
       }
+
       test_epsilon <- true;
     }
-    
-    
+
     // change step so that person stops at node before going into new road
     write "Step time: " + step + "s";
     // MOVE
@@ -224,7 +230,15 @@ species people skills: [moving] {
       draw new_path.shape color: #magenta width: 5;
     }
 
-    draw circle(3) color: #red;
+    draw circle(2.5) color: #red;
+  }
+
+}
+
+species my_node {
+
+  aspect base {
+    draw circle(2) color: #purple;
   }
 
 }
@@ -235,7 +249,7 @@ species road {
   int max_capacity;
 
   aspect base {
-    draw shape color: #blue;
+    draw shape color: #blue width: 2;
     draw string(self.shape.perimeter with_precision 2) color: #black font: font('Helvetica', 10, #plain);
   }
 
@@ -246,13 +260,13 @@ experiment my_experiment type: gui {
     display my_display type: opengl {
       species road aspect: base;
       species people aspect: base;
-      graphics "nodes" {
-        loop n over: my_graph.vertices {
-          draw circle(2) at: point(n) color: #purple;
-        }
-
-      }
-
+      species my_node aspect: base;
+      //      graphics "nodes" {
+      //        loop n over: my_graph.vertices {
+      //          draw circle(2) at: point(n) color: #purple;
+      //        }
+      //
+      //      }
       event [mouse_down] action: mouse_down_evt;
     }
 
