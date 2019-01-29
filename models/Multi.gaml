@@ -7,7 +7,7 @@ global {
   geometry shape <- square(150 #m);
 
   init {
-    add point(10, 10) to: nodes;
+    add point(10, 10) to: nodesxxxxx;
     add point(90, 90) to: nodes;
     add point(40, 20) to: nodes;
     add point(80, 50) to: nodes;
