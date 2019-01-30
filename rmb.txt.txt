@@ -1,0 +1,6 @@
+calculate pre speed (bpr)
+
+road weight re-calc
+link capacity -> change road color
+record traffic at each node? (how many passed 1 node)
+

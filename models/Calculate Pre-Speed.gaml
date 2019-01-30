@@ -27,46 +27,70 @@ global {
 
     create road {
       shape <- line([my_node[0], my_node[1]]);
+      link_length <- shape.perimeter;
+      free_speed <- 5 #m/#s;
+      max_capacity <- 10;
     }
 
     create road {
       shape <- line([my_node[1], my_node[2]]);
+      link_length <- shape.perimeter;
+      free_speed <- 5 #m/#s;
+      max_capacity <- 10;
     }
 
     create road {
       shape <- line([my_node[2], my_node[3]]);
+      link_length <- shape.perimeter;
+      free_speed <- 5 #m/#s;
+      max_capacity <- 10;
     }
 
     create road {
       shape <- line([my_node[3], my_node[4]]);
+      link_length <- shape.perimeter;
+      free_speed <- 5 #m/#s;
+      max_capacity <- 10;
     }
 
     create road {
       shape <- line([my_node[4], my_node[5]]);
+      link_length <- shape.perimeter;
+      free_speed <- 5 #m/#s;
+      max_capacity <- 10;
     }
 
     create road {
       shape <- line([my_node[5], my_node[6]]);
+      link_length <- shape.perimeter;
+      free_speed <- 5 #m/#s;
+      max_capacity <- 10;
     }
 
-    create road {
-      shape <- line([my_node[6], my_node[7]]);
-    }
-
-    create road {
-      shape <- line([my_node[7], my_node[8]]);
-    }
-
-    create road {
-      shape <- line([my_node[8], my_node[9]]);
-    }
-
-    create road {
-      shape <- line([my_node[9], my_node[10]]);
-    }
 
     my_graph <- as_edge_graph(road) with_weights (road as_map (each::each.shape.perimeter));
-    do create_people(30);
+    //    do create_people(30);
+
+    // TEST people
+    create people number: 1 {
+      location <- nodes[0];
+      dest <- nodes[4];
+      shortest_path <- path_between(my_graph, location, dest);
+      fixed_vertices <- shortest_path.vertices;
+      num_nodes_to_complete <- length(shortest_path.vertices) - 1;
+            
+      // ONLY NEED TIME
+//      speed <- (5 + rnd(0.0, 5.0)) #m / #s;
+    }
+
+    create people number: 1 {
+      location <- nodes[6];
+      dest <- nodes[2];
+      shortest_path <- path_between(my_graph, location, dest);
+      fixed_vertices <- shortest_path.vertices;
+      num_nodes_to_complete <- length(shortest_path.vertices) - 1;
+//      speed <- (5 + rnd(0.0, 5.0)) #m / #s;
+    }
 
     //    write shortest_path.segments[0];
     //    write road[0].shape;
@@ -110,13 +134,17 @@ global {
   action update_min_time {
     ask people {
       point next_node <- point(fixed_vertices[next_node_index]);
-      float distance_to_next_node <- self distance_to next_node;
+      list<road> path_roads <- shortest_path.edges collect (road(each));
+      write path_roads collect (each.link_length with_precision 2);
+      write "SOMETHING";
+      
+      float distance_to_next_node <- self distance_to next_node; // CHANGE TO LINK LENGTH
       float travel_time <- distance_to_next_node / speed;
       add travel_time to: time_list;
     }
 
     float min_time <- min(time_list);
-    write "MIN_TIME: " + min_time;
+//    write "MIN_TIME: " + min_time;
     ask people {
       step <- min_time;
     }
@@ -149,9 +177,12 @@ global {
     do pause;
   }
 
+  // TEST
+  int node_counter <- 0;
 }
 
 species people skills: [moving] {
+  rgb color <- rgb([rnd(255), rnd(255), rnd(255)]);
   point dest; // destination node
   path shortest_path; // shortest path
   list<point> fixed_vertices;
@@ -193,16 +224,16 @@ species people skills: [moving] {
     }
 
     // change step so that person stops at node before going into new road
-    write "Step time: " + step + "s";
+//    write "Step time: " + step + "s";
     // MOVE
     do follow path: shortest_path;
 
     // CHECK IF PERSON IS ON ONE NODE
     if (self overlaps next_node) {
-      write "OVERLAPS";
+//      write "OVERLAPS";
       // if its the final node
       if (next_node_index = num_nodes_to_complete) {
-        write "ARRIVED!";
+//        write "ARRIVED!";
         do die;
       } else {
         is_on_node <- true;
@@ -225,20 +256,27 @@ species people skills: [moving] {
   aspect base {
     if (clicked = true) {
       path new_path <- path_between(my_graph, location, dest);
-      draw circle(5) at: point(new_path.source) color: #yellow;
-      draw circle(5) at: point(new_path.target) color: #cyan;
+      draw circle(2) at: point(new_path.source) color: #yellow;
+      draw circle(2) at: point(new_path.target) color: #cyan;
       draw new_path.shape color: #magenta width: 5;
     }
 
-    draw circle(1.5) color: #red;
+    draw circle(1.5) color: color;
   }
 
 }
 
 species my_node {
+  int node_number;
+
+  init {
+    node_number <- node_counter;
+    node_counter <- node_counter + 1;
+  }
 
   aspect base {
-    draw circle(1) color: #purple;
+//    draw circle(1) color: #lightblue;
+    draw string(node_number) color: #yellow font: font('Helvetica', 15, #plain);
   }
 
 }
@@ -247,10 +285,10 @@ species road {
   float link_length;
   float free_speed;
   int max_capacity;
-  int current_volume min: 0 max: max_capacity;
+  int current_volume <- 0 min: 0 max: max_capacity;
 
   aspect base {
-    draw shape color: #blue width: 2;
+    draw shape color: #white width: 2;
     draw string(self.shape.perimeter with_precision 2) color: #black font: font('Helvetica', 10, #plain);
   }
 
@@ -258,7 +296,7 @@ species road {
 
 experiment my_experiment type: gui {
   output {
-    display my_display type: opengl {
+    display my_display type: opengl background: #gray {
       species road aspect: base;
       species people aspect: base;
       species my_node aspect: base;
