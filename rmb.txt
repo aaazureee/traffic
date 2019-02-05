@@ -1,6 +1,15 @@
 calculate pre speed (bpr)
 
-road weight re-calc
+road weight re-calc (link length)
 link capacity -> change road color
+
+directed
+block road?
+
+
+
+
+
+// Text data (later)
 record traffic at each node? (how many passed 1 node)
 

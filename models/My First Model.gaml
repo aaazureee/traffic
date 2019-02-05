@@ -68,16 +68,20 @@ species road {
 }
 
 species people skills: [moving] {
-
+  int a <- 1;
+  float ratio <- 1;
   reflex {
     float dis <- 300 #m;
     float free_speed <- 10 #m / #s;
     float time_taken <- (dis / free_speed) #s;
     speed <- 10 #m / #s;
+    if (a = 1) {
+      ratio <- dis / self distance_to {100, 0} * ratio;
+      a <- 0;
+    }
     
-    float ratio <- dis / self distance_to {100, 0};
     
-    write "DIST TO GOAL: " + self distance_to {100, 0};
+    write "DIST TO GOAL: " + self distance_to {100, 0} * ratio;
     float gama_time <- (self distance_to {100, 0}) / free_speed;
     float true_time <- ((self distance_to {100, 0}) / free_speed) * ratio;
     write "GAMA time: " + gama_time;
