@@ -5,6 +5,7 @@ global {
   list<point> nodes;
   list<float> time_list; // list of time to arrive to next node;
   geometry shape <- square(150 #m);
+  float seed <- 1.0;
 
   init {
     add point(10, 10) to: nodes;
@@ -27,7 +28,7 @@ global {
 
     create road {
       shape <- line([my_node[0], my_node[1]]);
-      link_length <- shape.perimeter * 2; // double link length test
+      link_length <- shape.perimeter; // double link length test
       free_speed <- 5 #m / #s;
       max_capacity <- 10;
     }
@@ -35,62 +36,120 @@ global {
     create road {
       shape <- line([my_node[1], my_node[2]]);
       link_length <- shape.perimeter;
-      free_speed <- 5 #m / #s;
+      free_speed <- 6 #m / #s;
       max_capacity <- 10;
     }
 
     create road {
       shape <- line([my_node[2], my_node[3]]);
       link_length <- shape.perimeter;
-      free_speed <- 5 #m / #s;
-      max_capacity <- 10;
+      free_speed <- 7 #m / #s;
+      max_capacity <-10;
     }
 
     create road {
       shape <- line([my_node[3], my_node[4]]);
       link_length <- shape.perimeter;
-      free_speed <- 5 #m / #s;
+      free_speed <- 8 #m / #s;
       max_capacity <- 10;
     }
 
     create road {
       shape <- line([my_node[4], my_node[5]]);
       link_length <- shape.perimeter;
-      free_speed <- 5 #m / #s;
+      free_speed <- 4 #m / #s;
       max_capacity <- 10;
     }
 
     create road {
       shape <- line([my_node[5], my_node[6]]);
       link_length <- shape.perimeter;
-      free_speed <- 5 #m / #s;
+      free_speed <- 3 #m / #s;
       max_capacity <- 10;
     }
 
+    create road {
+      shape <- line([my_node[6], my_node[7]]);
+      link_length <- shape.perimeter;
+      free_speed <- 3 #m / #s;
+      max_capacity <- 10;
+    }
+
+    create road {
+      shape <- line([my_node[7], my_node[8]]);
+      link_length <- shape.perimeter;
+      free_speed <- 1 #m / #s;
+      max_capacity <- 10;
+    }
+
+    create road {
+      shape <- line([my_node[8], my_node[9]]);
+      link_length <- shape.perimeter;
+      free_speed <- 2 #m / #s;
+      max_capacity <- 10;
+    }
+
+    create road {
+      shape <- line([my_node[9], my_node[10]]);
+      link_length <- shape.perimeter;
+      free_speed <- 6 #m / #s;
+      max_capacity <- 10;
+    }
+
+    create road {
+      shape <- line([my_node[9], my_node[5]]);
+      link_length <- shape.perimeter;
+      free_speed <- 4 #m / #s;
+      max_capacity <- 10;
+    }
+
+    create road {
+      shape <- line([my_node[3], my_node[7]]);
+      link_length <- shape.perimeter;
+      free_speed <- 3 #m / #s;
+      max_capacity <- 10;
+    }
+
+    create road {
+      shape <- line([my_node[10], my_node[7]]);
+      link_length <- shape.perimeter;
+      free_speed <- 2 #m / #s;
+      max_capacity <- 10;
+    }
+
+    // try reverse
+//    ask road {
+//      create road {
+//        shape <- line(reverse(myself.shape.points));
+//        link_length <- myself.link_length;
+//        free_speed <- myself.free_speed;
+//        max_capacity <- myself.max_capacity;
+//      }
+//
+//    }
+
     my_graph <- as_edge_graph(road) with_weights (road as_map (each::each.link_length));
-    //    do create_people(30);
+    do create_people(50);
+//    do create_people_test(7, 0 ,4);
+//    do create_people_test(100, 2, 0);
 
     // TEST people
-    create people number: 8 {
-      location <- nodes[0];
-      dest <- nodes[4];
-      shortest_path <- path_between(my_graph, location, dest);
-      fixed_vertices <- shortest_path.vertices;
-      num_nodes_to_complete <- length(shortest_path.vertices) - 1;
-
-      // ONLY NEED TIME
-      //      speed <- (5 + rnd(0.0, 5.0)) #m / #s;
-    }
+    //    create people number: 8 {
+    //      location <- nodes[0];
+    //      dest <- nodes[4];
+    //      shortest_path <- path_between(my_graph, location, dest);
+    //      fixed_vertices <- shortest_path.vertices;
+    //      num_nodes_to_complete <- length(shortest_path.vertices) - 1;
+    //    }
 
     // change to 6-2 to REVERT TOBEGINNING
-    create people number: 3 {
-      location <- nodes[0];
-      dest <- nodes[4];
-      shortest_path <- path_between(my_graph, location, dest);
-      fixed_vertices <- shortest_path.vertices;
-      num_nodes_to_complete <- length(shortest_path.vertices) - 1;
-      //      speed <- (5 + rnd(0.0, 5.0)) #m / #s;
-    }
+    //    create people number: 3 {
+    //      location <- nodes[0];
+    //      dest <- nodes[4];
+    //      shortest_path <- path_between(my_graph, location, dest);
+    //      fixed_vertices <- shortest_path.vertices;
+    //      num_nodes_to_complete <- length(shortest_path.vertices) - 1;
+    //    }
 
     //    write shortest_path.segments[0];
     //    write road[0].shape;
@@ -105,6 +164,10 @@ global {
     //    write nodes[0] distance_to nodes[1];
     //    write shortest_path.vertices;
     //    write shortest_path.segments;
+  }
+
+  reflex generate_ppl when: every(20 #cycle) {
+      do create_people(10);
   }
 
   // empty list first then update min time
@@ -126,7 +189,23 @@ global {
       shortest_path <- path_between(my_graph, location, dest);
       fixed_vertices <- shortest_path.vertices;
       num_nodes_to_complete <- length(shortest_path.vertices) - 1;
-      speed <- (5 + rnd(0.0, 5.0)) #m / #s;
+    }
+
+  }
+  
+  action create_people_test (int num_people, int u_location, int u_dest) {
+    create people number: num_people {
+      int random_origin_index <- rnd(length(nodes) - 1);
+      location <- nodes[u_location];
+      int random_dest_index <- rnd(length(nodes) - 1);
+      loop while: random_origin_index = random_dest_index {
+        random_dest_index <- rnd(length(nodes) - 1);
+      }
+
+      dest <- nodes[u_dest];
+      shortest_path <- path_between(my_graph, location, dest);
+      fixed_vertices <- shortest_path.vertices;
+      num_nodes_to_complete <- length(shortest_path.vertices) - 1;
     }
 
   }
@@ -139,25 +218,27 @@ global {
       //      write path_roads collect (each.link_length with_precision 2); // debug distance      
       current_road <- path_roads[next_node_index - 1]; // current road segment
       float true_link_length <- current_road.link_length; // link length (real_)
-      write "True link length: " + true_link_length;
+      //      write "True link length: " + true_link_length;
       float distance_to_next_node <- self distance_to next_node; // gama distance (2d graph)
-      write "GAMA distance: " + distance_to_next_node;
-      is_road_jammed <- current_road.current_volume = current_road.max_capacity; // is person stuck?
-//      write string(current_road.current_volume) + "/" + current_road.max_capacity;
-//      write "JAMMED STATUS: " + is_road_jammed;
-      
+      //      write "GAMA distance: " + distance_to_next_node;
+      if (is_road_jammed = true) {
+        is_road_jammed <- current_road.current_volume = current_road.max_capacity; // is person stuck?
+      }
+
+      //      write string(current_road.current_volume) + "/" + current_road.max_capacity;
+      //      write "JAMMED STATUS: " + is_road_jammed;
       if (is_road_jammed = false) { // only do stuff is road is not jammed
       // FIND initial RATIO + speed at start of each road
         if (is_on_node = true) {
-          write "IS ON NODE";
+        //          write "IS ON NODE";
           ratio <- true_link_length / distance_to_next_node;
           speed <- myself.get_equi_speed(current_road.free_speed, current_road.current_volume, current_road.max_capacity);
           is_on_node <- false;
           current_road.current_volume <- current_road.current_volume + 1; // increase traffic volume of the road
         }
 
-        write "RATIO: " + ratio;
-        real_dist_to_next_node <- distance_to_next_node * ratio;        
+        //        write "RATIO: " + ratio;
+        real_dist_to_next_node <- distance_to_next_node * ratio;
         float travel_time <- real_dist_to_next_node / speed;
         //      write "REAL travel_time: " + travel_time;
         add travel_time to: time_list;
@@ -170,8 +251,8 @@ global {
     ask people {
       step <- min_time;
     }
-    write min_time;
 
+    //    write min_time;
   }
 
   // BPR equation
@@ -201,10 +282,10 @@ global {
   // TEST epsilon value
   bool test_epsilon <- false;
 
-  reflex stop when: length(people) = 0 {
-    write "HALT";
-    do pause;
-  }
+  //  reflex stop when: length(people) = 0 {
+  //    write "HALT";
+  //    do pause;
+  //  }
 
   // TEST
   int node_counter <- 0;
@@ -222,11 +303,11 @@ species people skills: [moving] {
   float ratio <- 1.0;
   float real_dist_to_next_node;
   road current_road;
-  bool is_road_jammed <- false;
-  
+  bool is_road_jammed <- true;
+
   // Smart move
   reflex smart_move when: is_road_jammed = false {
-//    write "pre-speed: " + speed;
+  //    write "pre-speed: " + speed;
     point next_node <- point(fixed_vertices[next_node_index]);
     float epsilon <- 10 ^ -5;
     //    write "DIST:" + distance_to_next_node;
@@ -236,25 +317,25 @@ species people skills: [moving] {
     do follow path: shortest_path;
     //    write "TRAVELLED: " + (self distance_to fixed_vertices[next_node_index - 1]) * ratio;
     if (real_dist_to_next_node < epsilon) {
-      write "EPSILON--------------------------------";
-      write "EPSILON--------------------------------";
-      write "EPSILON--------------------------------";
-      write "EPSILON--------------------------------";
-      write "EPSILON--------------------------------";
-      write "EPSILON--------------------------------";
-      write "EPSILON--------------------------------";
-      write "EPSILON--------------------------------";
-      write "EPSILON--------------------------------";
-      write "EPSILON--------------------------------";
+    //      write "EPSILON--------------------------------";
+    //      write "EPSILON--------------------------------";
+    //      write "EPSILON--------------------------------";
+    //      write "EPSILON--------------------------------";
+    //      write "EPSILON--------------------------------";
+    //      write "EPSILON--------------------------------";
+    //      write "EPSILON--------------------------------";
+    //      write "EPSILON--------------------------------";
+    //      write "EPSILON--------------------------------";
+    //      write "EPSILON--------------------------------";
       self.location <- next_node.location;
       test_epsilon <- true;
     }
 
-    write "---------------------";
+    //    write "---------------------";
 
     // CHECK IF PERSON IS ON ONE NODE
     if (self overlaps next_node) {
-//      write "OVERLAPS";
+    //      write "OVERLAPS";
       current_road.current_volume <- current_road.current_volume - 1;
       //      write "OVERLAPS";
       // if its the final node
@@ -263,6 +344,7 @@ species people skills: [moving] {
         do die;
       } else {
         is_on_node <- true;
+        is_road_jammed <- true;
         next_node_index <- next_node_index + 1;
       }
 
@@ -325,11 +407,10 @@ species road {
     } else {
       color <- #red;
     }
-    draw shape color: color width: 2;    
-    draw string(self.shape.perimeter with_precision 2) color: #black font: font('Helvetica', 10, #plain);
-  }
 
-}
+    draw shape color: color width: 2;
+    draw string(self.shape.perimeter with_precision 2) color: #black font: font('Helvetica', 10, #plain);
+  } }
 
 experiment my_experiment type: gui {
   output {

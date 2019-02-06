@@ -1,8 +1,3 @@
-calculate pre speed (bpr)
-
-road weight re-calc (link length)
-link capacity -> change road color
-
 directed
 block road?
 

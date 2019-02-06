@@ -23,9 +23,20 @@ global {
       dog <- 999;
     }
 
-    create road {
-      shape <- line([{0, 30}, {100, 30}]);
+    ask dogSpec {
+      write dog;
+      create dogSpec {
+        dog <- myself.dog;
+      }
     }
+    
+    
+    
+    
+    
+    
+    
+    
 
     map<road, float> weight_map <- road as_map (each::each.shape.perimeter);
     the_graph <- as_edge_graph(road) with_weights weight_map;
