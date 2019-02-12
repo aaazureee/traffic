@@ -1,92 +1,109 @@
-model graph_model
+model weightperagents
 
 global {
-    int number_of_agents <- 50;
-    point source;
-    point target;
-    graph my_graph;
-    path shortest_path;
+  map<road, float> roads_weight;
+  graph road_network;
+  float slow_coeff <- 3.0;
 
-    init {
-        create graph_agent number: number_of_agents;
+  init {
+  //This road will be slow
+  //    create road {
+  //      shape <- line([{10, 50}, {90, 50}]);
+  //      slow <- true;
+  //    }
+  //The others will be faster
+    create road {
+      shape <- line([{10, 50}, {10, 10}]);
+      slow <- false;
+    }
+    //
+    //    create road {
+    //      shape <- line([{10, 10}, {90, 10}]);
+    //      slow <- false;
+    //    }
+    //    create road {
+    //      shape <- line([{90, 10}, {90, 50}]);
+    //      slow <- false;
+    //    }
+
+    //Weights map of the graph for those who will know the shortest road by taking into account the weight of the edges
+    roads_weight <- road as_map (each::each.shape.perimeter * (each.slow ? slow_coeff : 1.0));
+    road_network <- as_edge_graph(road);
+
+    //people with information about the traffic
+    create people {
+      color <- #blue;
+      size <- 2.0;
+      roads_knowledge <- roads_weight;
     }
 
-    reflex pick_two_points {
-        if (my_graph = nil) {
-            ask graph_agent {
-                myself.my_graph <- self.my_graph;
-                break;
-            }
-
-        }
-
-        shortest_path <- nil;
-        loop while: shortest_path = nil {
-            source <- point(one_of(my_graph.vertices));
-            target <- point(one_of(my_graph.vertices));
-            if (source != target) {
-                shortest_path <- path_between(my_graph, source, target);
-            }
-
-        }
-
+    //people without information about the traffic
+    create people {
+      color <- #yellow;
+      size <- 1.0;
+      roads_knowledge <- road as_map (each::each.shape.perimeter);
     }
+
+    ask people {
+      write " cacto";
+      if (1 = 1) {
+        break;
+      }
+
+      write "2321321321";
+    }
+
+  }
 
 }
 
-species graph_agent parent: graph_node edge_species: edge_agent {
-    list<int> list_connected_index;
+species road {
+  bool slow;
 
-    init {
-        int i <- 0;
-        loop x over: graph_agent {
-            if (flip(0.1)) {
-                add i to: list_connected_index;
-            }
-
-            i <- i + 1;
-        }
-
-    }
-
-    bool related_to (graph_agent other) {
-        using topology: topology(world) {
-            return (self.location distance_to other.location < 20);
-        }
-
-    }
-
-    aspect base {
-        draw circle(2) color: #green;
-    }
+  aspect geom {
+    draw shape color: slow ? #red : #green;
+  }
 
 }
 
-species edge_agent parent: base_edge {
+species people skills: [moving] {
+  map<road, float> roads_knowledge;
+  point the_target;
+  rgb color;
+  float size;
+  path path_to_follow;
 
-    aspect base {
-        draw shape color: #blue;
+  init {
+    the_target <- {90, 50};
+    location <- {10, 50};
+  }
+
+  reflex movement when: location != the_target {
+    write path_between(road_network with_weights roads_knowledge, location, the_target);
+    if (path_to_follow = nil) {
+
+    //Find the shortest path using the agent's own weights to compute the shortest path
+      path_to_follow <- path_between(road_network with_weights roads_knowledge, location, the_target);
+      //      write path_to_follow;
     }
+    //the agent follows the path it computed but with the real weights of the graph
+    do follow path: path_to_follow;
+  }
+
+  aspect base {
+    draw circle(size) color: color;
+  }
 
 }
 
-experiment MyExperiment type: gui {
-    output {
-        display MyDisplay type: java2D {
-            species graph_agent aspect: base;
-            species edge_agent aspect: base;
-            graphics "shortest path" {
-                if (shortest_path != nil) {
-                    draw circle(3) at: source color: #yellow;
-                    draw circle(3) at: target color: #cyan;
-                    draw (shortest_path.shape + 5) color: #magenta;
-                    write shortest_path.shape;
-                }
-
-            }
-
-        }
-
+experiment weightperagents type: gui {
+  float minimum_cycle_duration <- 0.1;
+  output {
+    display map {
+      species road aspect: geom;
+      species people aspect: base;
     }
+
+  }
 
 }

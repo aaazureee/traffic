@@ -1,0 +1,63 @@
+1. introduction
+The traffic simulation consists of a road network, which is based on a graph of nodes (intersection) and roads connecting these nodes. During the simulation, people will be initialized at a random source node, and is given a random destination node to travel to. People will move towards the destination node after each cycle in the simulation. When the person arrives at the destination node, it is removed from the simulation. 
+This simulation also considers traffic jam (based on road's max capacity), and prevent vehicles (people) from overtaking when they are travelling in the same road. Moreover, it supports dynamic user interaction such as blocking and un-blocking a chosen road on the graph and see how the simulation adapts. There are also data visualizaton graphs that will aid user's interpretation of the simulation (running in parallel with the main simulation).
+
+2. environment
+This section will provide an overview of underlying components of the simulation (showing important variables and logic handling):
++) Global environment:
+- my_graph
+  Type: graph
+  Description: The road network that will be built based on created road and node species.
+- time_list
+  Type: list of float values (unit in second)
+  Description: This list will contains the time needed of each person to reach the immediate next node on their path to destination node. 
+- nb_people_init
+  Type: integer
+  Description: Number of people initialized at the start of the simulation.
+- min_nb_people_spawn and max_nb_people_spawn
+  Type: integer
+  Description: Range of number of people randomly spawn after some interval specified by user (spawn_interval). This variable can be dynamically changed during the simulation.
+- spawn_interval
+  Type: integer
+  Description: After spawn_interval cycles, a random number of people (between min_nb_people_spawn and max_nb_people_spawn) will be randomly spawn. This variable can be dynamically changed during the simulation.
+- nb_trips_completed
+  Type: integer
+  Description: Total number of trips completed during the simulation.
++) Road species
+- link_length
+  Type: float (unit in meters)
+  Description: Length of the road.
+- free_speed
+  Type: float (unit in meters/second)
+  Description: Maximum speed to travel on this road (when there is no one on the road).
+     
++) Node species
+
++) People species
+
+3. Simulation
+4. Data visualization
+
+
+
+------
+inside blocked road, but destination on the same road -> still finish
+
+inside blocked road, destination outside of blocked road -> stuck
+
+outside blocked road, blocked road is on previous shortest path, try re route new shortest path.
+- If possible, go as normal
+- If not possible (no path found), stay stuck 
+
+ah shibal!!!!!!!!!!!!!!!!!!!
+
+fix stupid:
+shortest_path[length(shortest_path)].shape[1] does not match dest =>>>>> cant_find_path = true
+
+
+
+
+
+
+
+
