@@ -454,7 +454,7 @@ species road {
 
 experiment my_experiment type: gui {
   output {
-    display my_display type: opengl background: #white {
+    display my_display background: #white {
       species road aspect: base;
       species people aspect: base;
       species my_node aspect: base;

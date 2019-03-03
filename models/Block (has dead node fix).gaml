@@ -36,12 +36,9 @@ global {
   list<my_node> top_traffic_nodes -> {reverse(my_node sort_by each.traffic_count)};
   int node_traffic_sum -> {sum(top_traffic_nodes collect each.traffic_count)};
   float node_traffic_avg -> {mean(top_traffic_nodes collect each.traffic_count)};
+  map<string, list> traffic_count_histmap -> {distribution_of(top_traffic_nodes collect each.traffic_count, 10)};
 
   init {
-//    add point(10, 10) to: nodes;
-//    add point(10, 90) to: nodes;
-//    add point(50, 90) to: nodes;
-//    add point(180, 10) to: nodes;
     add point(10, 10) to: nodes;
     add point(10, 90) to: nodes;
     add point(40, 20) to: nodes;
@@ -87,63 +84,63 @@ global {
       free_speed <- (min_free_speed + rnd(max_free_speed - min_free_speed)) with_precision 2;
       max_capacity <- min_capacity_val + rnd(max_capacity_val - min_capacity_val);
     }
-    
+
     create road {
       shape <- line([my_node[4], my_node[5]]);
       link_length <- shape.perimeter; // double link length test
       free_speed <- (min_free_speed + rnd(max_free_speed - min_free_speed)) with_precision 2;
       max_capacity <- min_capacity_val + rnd(max_capacity_val - min_capacity_val);
     }
-    
+
     create road {
       shape <- line([my_node[5], my_node[6]]);
       link_length <- shape.perimeter; // double link length test
       free_speed <- (min_free_speed + rnd(max_free_speed - min_free_speed)) with_precision 2;
       max_capacity <- min_capacity_val + rnd(max_capacity_val - min_capacity_val);
     }
-    
+
     create road {
       shape <- line([my_node[6], my_node[7]]);
       link_length <- shape.perimeter; // double link length test
       free_speed <- (min_free_speed + rnd(max_free_speed - min_free_speed)) with_precision 2;
       max_capacity <- min_capacity_val + rnd(max_capacity_val - min_capacity_val);
     }
-    
+
     create road {
       shape <- line([my_node[7], my_node[8]]);
       link_length <- shape.perimeter; // double link length test
       free_speed <- (min_free_speed + rnd(max_free_speed - min_free_speed)) with_precision 2;
       max_capacity <- min_capacity_val + rnd(max_capacity_val - min_capacity_val);
     }
-    
+
     create road {
       shape <- line([my_node[8], my_node[9]]);
       link_length <- shape.perimeter; // double link length test
       free_speed <- (min_free_speed + rnd(max_free_speed - min_free_speed)) with_precision 2;
       max_capacity <- min_capacity_val + rnd(max_capacity_val - min_capacity_val);
     }
-    
+
     create road {
       shape <- line([my_node[9], my_node[10]]);
       link_length <- shape.perimeter; // double link length test
       free_speed <- (min_free_speed + rnd(max_free_speed - min_free_speed)) with_precision 2;
       max_capacity <- min_capacity_val + rnd(max_capacity_val - min_capacity_val);
     }
-    
+
     create road {
       shape <- line([my_node[9], my_node[5]]);
       link_length <- shape.perimeter; // double link length test
       free_speed <- (min_free_speed + rnd(max_free_speed - min_free_speed)) with_precision 2;
       max_capacity <- min_capacity_val + rnd(max_capacity_val - min_capacity_val);
     }
-    
+
     create road {
       shape <- line([my_node[3], my_node[7]]);
       link_length <- shape.perimeter; // double link length test
       free_speed <- (min_free_speed + rnd(max_free_speed - min_free_speed)) with_precision 2;
       max_capacity <- min_capacity_val + rnd(max_capacity_val - min_capacity_val);
     }
-    
+
     create road {
       shape <- line([my_node[10], my_node[7]]);
       link_length <- shape.perimeter; // double link length test
@@ -151,8 +148,6 @@ global {
       max_capacity <- min_capacity_val + rnd(max_capacity_val - min_capacity_val);
     }
 
-
-    //     try reverse
     ask road {
       create road {
         shape <- line(reverse(myself.shape.points));
@@ -175,7 +170,7 @@ global {
 
   }
 
-  reflex generate_ppl when: every(spawn_interval) {
+  reflex generate_people when: every(spawn_interval) {
     do create_people(min_nb_people_spawn + rnd(max_nb_people_spawn - min_nb_people_spawn));
   }
 
@@ -250,16 +245,19 @@ global {
 
       if (cant_find_path = false) {
         if (shortest_path = nil or length(shortest_path.edges) = 0) {
-          write "ded";
-          do die;
-        }
+          cant_find_path <- true;
+        } else {
         // Fixed road path
-        fixed_edges <- shortest_path.edges collect (road(each));
-        num_nodes_to_complete <- length(fixed_edges);
-        current_road <- fixed_edges[current_road_index];
+          fixed_edges <- shortest_path.edges collect (road(each));
+          num_nodes_to_complete <- length(fixed_edges);
+          current_road <- fixed_edges[current_road_index];
+        }
+
       }
 
       speed <- 0 #m / #s;
+      // increment traffic count at source location node
+      my_node(location).traffic_count <- my_node(location).traffic_count + 1;
     }
 
   }
@@ -458,7 +456,7 @@ species people skills: [moving] {
         draw polyline([self.location, self.dest]) color: #pink width: 5;
       }
 
-    } else if (clicked = true and cant_find_path = false) {
+    } else if (clicked = true and cant_find_path = false and is_in_blocked_road = false) {
       path new_path <- path_between(my_graph, location, dest);
       draw circle(2) at: point(new_path.source) color: #yellow;
       draw circle(2) at: point(new_path.target) color: #cyan;
@@ -485,10 +483,6 @@ species my_node {
     node_counter <- node_counter + 1;
   }
 
-  reflex {
-    write traffic_count;
-  }
-
   aspect base {
   //    draw circle(1) color: #lightblue;
     draw string(node_number) color: #black font: font('Helvetica', 18, #plain);
@@ -500,7 +494,7 @@ species road {
   float link_length;
   float free_speed;
   int max_capacity;
-  int current_volume <- 0 min: 0 max: max_capacity;
+  int current_volume <- 0;
   float link_full_percentage <- 0.0;
   rgb color;
   bool blocked <- false;
@@ -589,11 +583,11 @@ species road {
 
     // ask people in blocked road but has destination outside of blocked road
     ask people where (each.is_in_blocked_road and (each.current_road_index != (each.num_nodes_to_complete - 1))) {
-      write "----";
-      write self;
-      write self.current_road_index;
-      write self.num_nodes_to_complete;
-      write "----";
+    //          write "----";
+    //          write self;
+    //          write self.current_road_index;
+    //          write self.num_nodes_to_complete;
+    //          write "----";
       speed <- 0 #m / #s;
     }
 
@@ -693,13 +687,13 @@ species road {
   //    write string(self) + ", num: " + length(people inside self);
   //  }
   aspect base {
-    if (link_full_percentage <= 0.25) {
+    if (link_full_percentage < 0.25) {
       color <- #lime;
       status <- "low";
-    } else if (link_full_percentage <= 0.5) {
+    } else if (link_full_percentage < 0.5) {
       color <- #blue;
       status <- "moderate";
-    } else if (link_full_percentage <= 0.75) {
+    } else if (link_full_percentage < 0.75) {
       color <- #yellow;
       status <- "high";
     } else {
@@ -717,7 +711,7 @@ species road {
     }
 
     draw shape color: color width: 2;
-    draw string(self.shape.perimeter with_precision 2) color: #black font: font('Helvetica', 10, #plain);
+    //    draw string(self.shape.perimeter with_precision 2) color: #black font: font('Helvetica', 10, #plain);
   } }
 
 experiment my_experiment type: gui {
@@ -771,8 +765,11 @@ experiment my_experiment type: gui {
     }
 
     display traffic_count_at_nodes_chart {
-      chart "Average traffic at 1 node" type: series size: {1, 0.5} position: {0, 0} x_label: "Cycle" y_label: "Count" {
-        data "sum" value: node_traffic_avg color: #salmon;
+    //      chart "Average traffic at 1 node" type: series size: {1, 0.5} position: {0, 0} x_label: "Cycle" y_label: "Count" {
+    //        data "sum" value: node_traffic_avg color: #salmon;
+    //      }
+      chart "Traffic count histogram" type: histogram size: {1, 0.5} position: {0, 0} x_label: "Traffic count bin" y_label: "Frequency" {
+        datalist list(traffic_count_histmap at "legend") value: list(traffic_count_histmap at "values");
       }
 
       chart "Top-k populated nodes (highest traffic)" type: histogram size: {1, 0.5} position: {0, 0.5} x_label: "Node id" y_label: "Count" {
@@ -788,9 +785,9 @@ experiment my_experiment type: gui {
     monitor "Traffic jam count" value: traffic_jam_count color: #red;
     monitor "Current number of people" value: nb_people_current;
     monitor "Number of trips completed" value: nb_trips_completed;
-    monitor "Average speed" value: avg_speed color: #deepskyblue;
+    monitor "Average speed" value: avg_speed with_precision 2 color: #deepskyblue;
     monitor "Node traffic sum" value: node_traffic_sum color: #crimson;
-    monitor "Node traffic average" value: node_traffic_avg color: #salmon;
+    monitor "Node traffic average" value: node_traffic_avg with_precision 2 color: #salmon;
   }
 
 }
