@@ -44,7 +44,7 @@ global {
   list<road> top_traffic_roads -> {road sort_by -each.accum_traffic_count};
   int road_accum_traffic_sum -> {sum(top_traffic_roads collect (each.accum_traffic_count))};
   int k_road <- 15 min: 1 max: 20;
-  
+
   // orig-dest count
   list<list<int>> orig_dest_matrix;
 
@@ -103,7 +103,7 @@ global {
       }
 
     }
-       
+
     // populate orig dest matrix based on number of nodes
     int max_len <- length(my_node);
     orig_dest_matrix <- list_with(max_len, list_with(max_len, 0));
@@ -114,10 +114,10 @@ global {
     my_graph <- directed(my_graph);
     //    do create_people(nb_people_init);
     do create_people_test(5, 0, 2);
-    do create_people_test(3, 1, 0);
-    do create_people_test(2, 2, 0);
-    do create_people_test(4, 2, 3);
-    do create_people_test(4, 3, 2);
+    //    do create_people_test(3, 1, 0);
+    //    do create_people_test(2, 2, 0);
+    //    do create_people_test(4, 2, 3);
+    //    do create_people_test(4, 3, 2);
 
     /* Clear file before writing data */
     loop txt_file over: result_dir {
@@ -187,7 +187,7 @@ global {
 
   action create_people_test (int num_people, int u_location, int u_dest) {
     create people number: num_people {
-      location <- nodes[u_location]; 
+      location <- nodes[u_location];
       dest <- nodes[u_dest];
       try {
         shortest_path <- path_between(my_graph, location, dest);
@@ -361,6 +361,41 @@ species people skills: [moving] {
   //    write string(self) + " has radio: " + has_radio;
   //  }
 
+  // Attempt to reroute when stuck at one node and cant find path
+  reflex reroute_attempt when: cant_find_path and is_on_node {
+    write string(self) + " attempt reroute";
+    try {
+      shortest_path <- path_between(my_graph, location, dest);
+    }
+
+    catch {
+      cant_find_path <- true;
+      speed <- 0 #m / #s;
+      return;
+    }
+
+    // check for problem with shortest_path when there are no edges connecting a node
+    if (shortest_path != nil and shortest_path.shape != nil and (shortest_path.shape.points[0] != location or shortest_path.shape.points[length(shortest_path.shape.points) - 1] !=
+    dest)) {
+      cant_find_path <- true;
+      speed <- 0 #m / #s;
+      return;
+    }
+
+    // if cannot find the shortest path
+    if (shortest_path = nil or length(shortest_path.edges) = 0) {
+      cant_find_path <- true;
+      speed <- 0 #m / #s;
+    } else {
+      fixed_edges <- shortest_path.edges collect (road(each));
+      num_nodes_to_complete <- length(fixed_edges);
+      current_road_index <- 0;
+      current_road <- fixed_edges[current_road_index];
+      cant_find_path <- false;
+    }
+
+  }
+
   // Smart move
   reflex smart_move when: cant_find_path = false and is_road_jammed = false and (!is_in_blocked_road or (is_in_blocked_road and current_road_index = num_nodes_to_complete - 1)) {
     float epsilon <- 10 ^ -5;
@@ -431,41 +466,6 @@ species people skills: [moving] {
 
       }
 
-    }
-
-  }
-
-  // Attempt to reroute when stuck at one node and cant find path
-  reflex reroute_attempt when: cant_find_path and is_on_node {
-    write "Attempt reroute";
-    try {
-      shortest_path <- path_between(my_graph, location, dest);
-    }
-
-    catch {
-      cant_find_path <- true;
-      speed <- 0 #m / #s;
-      return;
-    }
-
-    // check for problem with shortest_path when there are no edges connecting a node
-    if (shortest_path != nil and shortest_path.shape != nil and (shortest_path.shape.points[0] != location or shortest_path.shape.points[length(shortest_path.shape.points) - 1] !=
-    dest)) {
-      cant_find_path <- true;
-      speed <- 0 #m / #s;
-      return;
-    }
-
-    // if cannot find the shortest path
-    if (shortest_path = nil or length(shortest_path.edges) = 0) {
-      cant_find_path <- true;
-      speed <- 0 #m / #s;
-    } else {
-      fixed_edges <- shortest_path.edges collect (road(each));
-      num_nodes_to_complete <- length(fixed_edges);
-      current_road_index <- 0;
-      current_road <- fixed_edges[current_road_index];
-      cant_find_path <- false;
     }
 
   }
@@ -585,7 +585,7 @@ species road {
           if (cant_find_path = false) {
           //          write string(self) + " " + shortest_path;
             if (shortest_path = nil or length(shortest_path.edges) = 0) {
-              write "cant find path (expected)";
+              write string(self) + " cant find path (expected)";
               cant_find_path <- true;
               speed <- 0 #m / #s;
             } else {
@@ -647,7 +647,10 @@ species road {
 
       // people that are nearby a road that is recently unblocked
       bool next_road_is_unblocked <- false;
-      if (self.current_road != nil and self.current_road.shape = myself.shape and is_on_node = true) {
+
+      // if agent is on node and that node's location is the starting point of the unblocked road, agent will re-route
+      if (self.location = myself.shape.points[0] and is_on_node = true) {
+        write "I am" + self + " with current road: " + self.current_road;
         next_road_is_unblocked <- true;
       }
 
@@ -766,6 +769,7 @@ species file_saver {
       if (self.node_number != length(my_node) - 1) {
         node_header <- node_header + ",";
       }
+
     }
 
     save node_header to: node_stats_file type: "text";
@@ -779,24 +783,28 @@ species file_saver {
       if (self.road_number != length(road) - 1) {
         road_header <- road_header + ",";
       }
+
     }
 
     save road_header to: road_stats_file type: "text";
   }
-  
+
   // orig_dest stats file header
   action write_matrix_output {
-    string matrix_header <- "Cycle: " + cycle + "\n";
+    write orig_dest_matrix;
+    string matrix_header <- "Cycle: " + cycle + "\r\n";
     loop i from: 0 to: length(orig_dest_matrix) - 1 {
       loop j from: 0 to: length(orig_dest_matrix[i]) - 1 {
         matrix_header <- matrix_header + orig_dest_matrix[i][j];
         if (j != length(orig_dest_matrix[i]) - 1) {
           matrix_header <- matrix_header + ",";
         }
+
       }
-      matrix_header <- matrix_header + "\n";
+
+      matrix_header <- matrix_header + "\r\n";
     }
-    
+
     save matrix_header to: matrix_stats_file type: "text" rewrite: false;
   }
 
@@ -808,6 +816,7 @@ species file_saver {
       if (self.node_number != length(my_node) - 1) {
         node_output <- node_output + ",";
       }
+
     }
 
     save node_output to: node_stats_file type: "text" rewrite: false;
@@ -821,11 +830,12 @@ species file_saver {
       if (self.road_number != length(road) - 1) {
         road_output <- road_output + ",";
       }
+
     }
 
     save road_output to: road_stats_file type: "text" rewrite: false;
   }
-  
+
 }
 
 experiment my_experiment type: gui {
@@ -840,20 +850,20 @@ experiment my_experiment type: gui {
       event [mouse_down] action: mouse_down_evt;
     }
 
-    display top_populated_location_chart refresh: every(1 #cycle) {
-      chart "Top-" + k_node + " populated nodes (highest accumulated traffic)" type: histogram size: {1, 0.5} position: {0, 0} x_label: "Node id" y_label:
-      "Accumulated traffic count" {
-        datalist legend: (copy_between(top_traffic_nodes, 0, k_node) collect ("Node " + string(each.node_number))) value: (copy_between(top_traffic_nodes, 0, k_node) collect
-        each.accum_traffic_count);
-      }
-
-      chart "Top-" + k_road + " populated road (highest accumulated traffic)" type: histogram size: {1, 0.5} position: {0, 0.5} x_label: "Road id" y_label:
-      "Accumulated traffic count" {
-        datalist legend: (copy_between(top_traffic_roads, 0, k_road) collect ("Road " + string(each.road_number))) value: (copy_between(top_traffic_roads, 0, k_road) collect
-        each.accum_traffic_count);
-      }
-
-    }
+    //    display top_populated_location_chart refresh: every(1 #cycle) {
+    //      chart "Top-" + k_node + " populated nodes (highest accumulated traffic)" type: histogram size: {1, 0.5} position: {0, 0} x_label: "Node id" y_label:
+    //      "Accumulated traffic count" {
+    //        datalist legend: (copy_between(top_traffic_nodes, 0, k_node) collect ("Node " + string(each.node_number))) value: (copy_between(top_traffic_nodes, 0, k_node) collect
+    //        each.accum_traffic_count);
+    //      }
+    //
+    //      chart "Top-" + k_road + " populated road (highest accumulated traffic)" type: histogram size: {1, 0.5} position: {0, 0.5} x_label: "Road id" y_label:
+    //      "Accumulated traffic count" {
+    //        datalist legend: (copy_between(top_traffic_roads, 0, k_road) collect ("Road " + string(each.road_number))) value: (copy_between(top_traffic_roads, 0, k_road) collect
+    //        each.accum_traffic_count);
+    //      }
+    //
+    //    }
 
     //    display traffic_density_chart {
     //      chart "Traffic density count series" type: series size: {1, 0.5} position: {0, 0} x_label: "Cycle" y_label: "Count" {
@@ -895,16 +905,16 @@ experiment my_experiment type: gui {
     //
 
     //    
-    monitor "Low density road count" value: low_count color: #lime;
-    monitor "Moderate density road count" value: moderate_count color: #blue;
-    monitor "High density road count" value: high_count color: #yellow;
-    monitor "Extreme density road count" value: extreme_count color: #orange;
-    monitor "Traffic jam count" value: traffic_jam_count color: #red;
-    monitor "Current number of people" value: nb_people_current;
-    monitor "Number of trips completed" value: nb_trips_completed;
-    monitor "Average speed" value: avg_speed with_precision 2 color: #deepskyblue;
-    monitor "Accumulated node traffic sum" value: node_accum_traffic_sum color: #crimson;
-    monitor "Accumulated road traffic sum" value: road_accum_traffic_sum color: #purple;
+    //    monitor "Low density road count" value: low_count color: #lime;
+    //    monitor "Moderate density road count" value: moderate_count color: #blue;
+    //    monitor "High density road count" value: high_count color: #yellow;
+    //    monitor "Extreme density road count" value: extreme_count color: #orange;
+    //    monitor "Traffic jam count" value: traffic_jam_count color: #red;
+    //    monitor "Current number of people" value: nb_people_current;
+    //    monitor "Number of trips completed" value: nb_trips_completed;
+    //    monitor "Average speed" value: avg_speed with_precision 2 color: #deepskyblue;
+    //    monitor "Accumulated node traffic sum" value: node_accum_traffic_sum color: #crimson;
+    //    monitor "Accumulated road traffic sum" value: road_accum_traffic_sum color: #purple;
   }
 
 }
