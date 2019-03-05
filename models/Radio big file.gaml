@@ -55,8 +55,15 @@ global {
   init {
     add point(10, 10) to: nodes;
     add point(10, 90) to: nodes;
+    add point(40, 20) to: nodes;
+    add point(80, 50) to: nodes;
+    add point(90, 20) to: nodes;
     add point(50, 90) to: nodes;
-    add point(180, 10) to: nodes;
+    add point(30, 20) to: nodes;
+    add point(110, 50) to: nodes;
+    add point(120, 20) to: nodes;
+    add point(50, 120) to: nodes;
+    add point(100, 110) to: nodes;
     loop i from: 0 to: length(nodes) - 1 {
       create my_node {
         location <- nodes[i];
@@ -86,23 +93,86 @@ global {
     }
 
     create road {
-      shape <- curve(my_node[0].location, my_node[3].location, curve_width_eff);
+      shape <- curve(my_node[3].location, my_node[4].location, curve_width_eff);
+      link_length <- shape.perimeter; // double link length test
+      free_speed <- (min_free_speed + rnd(max_free_speed - min_free_speed)) with_precision 2;
+      max_capacity <- min_capacity_val + rnd(max_capacity_val - min_capacity_val);
+    }
+
+    create road {
+      shape <- curve(my_node[4].location, my_node[5].location, curve_width_eff);
+      link_length <- shape.perimeter; // double link length test
+      free_speed <- (min_free_speed + rnd(max_free_speed - min_free_speed)) with_precision 2;
+      max_capacity <- min_capacity_val + rnd(max_capacity_val - min_capacity_val);
+    }
+
+    create road {
+      shape <- curve(my_node[5].location, my_node[6].location, curve_width_eff);
+      link_length <- shape.perimeter; // double link length test
+      free_speed <- (min_free_speed + rnd(max_free_speed - min_free_speed)) with_precision 2;
+      max_capacity <- min_capacity_val + rnd(max_capacity_val - min_capacity_val);
+    }
+
+    create road {
+      shape <- curve(my_node[6].location, my_node[7].location, curve_width_eff);
+      link_length <- shape.perimeter; // double link length test
+      free_speed <- (min_free_speed + rnd(max_free_speed - min_free_speed)) with_precision 2;
+      max_capacity <- min_capacity_val + rnd(max_capacity_val - min_capacity_val);
+    }
+
+    create road {
+      shape <- curve(my_node[7].location, my_node[8].location, curve_width_eff);
+      link_length <- shape.perimeter; // double link length test
+      free_speed <- (min_free_speed + rnd(max_free_speed - min_free_speed)) with_precision 2;
+      max_capacity <- min_capacity_val + rnd(max_capacity_val - min_capacity_val);
+    }
+
+    create road {
+      shape <- curve(my_node[8].location, my_node[9].location, curve_width_eff);
+      link_length <- shape.perimeter; // double link length test
+      free_speed <- (min_free_speed + rnd(max_free_speed - min_free_speed)) with_precision 2;
+      max_capacity <- min_capacity_val + rnd(max_capacity_val - min_capacity_val);
+    }
+
+    create road {
+      shape <- curve(my_node[9].location, my_node[10].location, curve_width_eff);
+      link_length <- shape.perimeter; // double link length test
+      free_speed <- (min_free_speed + rnd(max_free_speed - min_free_speed)) with_precision 2;
+      max_capacity <- min_capacity_val + rnd(max_capacity_val - min_capacity_val);
+    }
+
+    create road {
+      shape <- curve(my_node[9].location, my_node[5].location, curve_width_eff);
+      link_length <- shape.perimeter; // double link length test
+      free_speed <- (min_free_speed + rnd(max_free_speed - min_free_speed)) with_precision 2;
+      max_capacity <- min_capacity_val + rnd(max_capacity_val - min_capacity_val);
+    }
+
+    create road {
+      shape <- curve(my_node[3].location, my_node[7].location, curve_width_eff);
+      link_length <- shape.perimeter; // double link length test
+      free_speed <- (min_free_speed + rnd(max_free_speed - min_free_speed)) with_precision 2;
+      max_capacity <- min_capacity_val + rnd(max_capacity_val - min_capacity_val);
+    }
+
+    create road {
+      shape <- curve(my_node[10].location, my_node[7].location, curve_width_eff);
       link_length <- shape.perimeter; // double link length test
       free_speed <- (min_free_speed + rnd(max_free_speed - min_free_speed)) with_precision 2;
       max_capacity <- min_capacity_val + rnd(max_capacity_val - min_capacity_val);
     }
 
     //     try reverse
-//    ask road {
-//      create road {
-//        int len <- length(myself.shape.points);
-//        shape <- curve(myself.shape.points[len - 1], myself.shape.points[0], curve_width_eff);
-//        link_length <- myself.link_length;
-//        free_speed <- myself.free_speed;
-//        max_capacity <- myself.max_capacity;
-//      }
-//
-//    }
+    //    ask road {
+    //      create road {
+    //        int len <- length(myself.shape.points);
+    //        shape <- curve(myself.shape.points[len - 1], myself.shape.points[0], curve_width_eff);
+    //        link_length <- myself.link_length;
+    //        free_speed <- myself.free_speed;
+    //        max_capacity <- myself.max_capacity;
+    //      }
+    //
+    //    }
 
     // populate orig dest matrix based on number of nodes
     int max_len <- length(my_node);
@@ -227,6 +297,7 @@ global {
         nb_trips_completed <- nb_trips_completed + 1;
         do die;
       }
+
       current_road <- fixed_edges[current_road_index];
       int len <- length(current_road.shape.points);
       next_node <- point(current_road.shape.points[len - 1]);
@@ -288,6 +359,9 @@ global {
         //        write "Real dist to next node: " + real_dist_to_next_node;
         add travel_time to: time_list;
         //        write "//////////////";
+        if (travel_time = 0) {
+          write "I am " + self;
+        }
       }
 
     }
@@ -353,13 +427,13 @@ species people skills: [moving] {
   bool stuck_same_location <- true;
 
   reflex update_unique_stuck_count when: !stuck_same_location {
-    write "I am " + self + ", is now stuck at same location after first cycle";
+//    write "I am " + self + ", is now stuck at same location after first cycle";
     stuck_same_location <- true;
   }
 
-//  reflex {
-//    write string(self) + " has radio: " + has_radio;
-//  }
+  //  reflex {
+  //    write string(self) + " has radio: " + has_radio;
+  //  }
 
   // Attempt to reroute when stuck at one node and cant find path
   reflex reroute_attempt when: cant_find_path and is_on_node {
@@ -412,9 +486,8 @@ species people skills: [moving] {
     using topology(my_graph) {
       distance_to_next_node <- self distance_to next_node;
     }
-
-    real_dist_to_next_node <- distance_to_next_node * ratio;
-    if (real_dist_to_next_node < epsilon or ((self distance_to next_node) * ratio) < epsilon) {
+    float real_dist <- distance_to_next_node * ratio;
+    if (real_dist < epsilon or ((self distance_to next_node) * ratio) < epsilon) {
       self.location <- next_node.location;
     }
 
@@ -541,20 +614,21 @@ species road {
     //          write "HERE I AM: " + self;
     //          write length(people);
     //      write "Current road: " + current_road;
+
+    // people that are stuck in middle of the road
+      if ((self.current_road != nil) and (self.current_road.shape = myself.shape) and (is_on_node = false)) {
+      //      if ((self overlaps myself) and (is_on_node = false)) {
+        write "Inside blocked road: " + self;
+        is_in_blocked_road <- true;
+      }
+
       bool exit_flag <- false;
       if (cant_find_path = true) {
         exit_flag <- true;
       }
 
       if (!exit_flag) {
-      // people that are stuck in middle of the road
-        if ((self.current_road != nil) and (self.current_road.shape = myself.shape) and (is_on_node = false)) {
-        //      if ((self overlaps myself) and (is_on_node = false)) {
-          write "Stuck: " + self;
-          is_in_blocked_road <- true;
-        }
-
-        // people that have their next road blocked
+      // people that have their next road blocked
         bool next_road_is_blocked <- false;
         if ((self.current_road != nil) and (self.current_road.shape = myself.shape) and (is_on_node = true)) {
           write string(self) + " has next road blocked.";
@@ -676,11 +750,11 @@ species road {
 
           exit_flag <- true;
         }
-        
+
         if (new_shortest_path != nil and new_shortest_path.shape != nil and new_shortest_path.shape.points[length(new_shortest_path.shape.points) - 1] != dest) {
-            write "Fixed no edges connecting node. " + self;
-            cant_find_path <- true;
-          }
+          write "Fixed no edges connecting node. " + self;
+          cant_find_path <- true;
+        }
 
         if (!exit_flag) {
           if (new_shortest_path = nil or length(new_shortest_path.edges) = 0) {
@@ -879,20 +953,20 @@ experiment my_experiment type: gui {
       event [mouse_down] action: mouse_down_evt;
     }
 
-//    display top_populated_location_chart refresh: every(1 #cycle) {
-//      chart "Top-" + k_node + " populated nodes (highest accumulated traffic)" type: histogram size: {1, 0.5} position: {0, 0} x_label: "Node id" y_label:
-//      "Accumulated traffic count" {
-//        datalist legend: (copy_between(top_traffic_nodes, 0, k_node) collect ("Node " + string(each.node_number))) value: (copy_between(top_traffic_nodes, 0, k_node) collect
-//        each.accum_traffic_count);
-//      }
-//
-//      chart "Top-" + k_road + " populated road (highest accumulated traffic)" type: histogram size: {1, 0.5} position: {0, 0.5} x_label: "Road id" y_label:
-//      "Accumulated traffic count" {
-//        datalist legend: (copy_between(top_traffic_roads, 0, k_road) collect ("Road " + string(each.road_number))) value: (copy_between(top_traffic_roads, 0, k_road) collect
-//        each.accum_traffic_count);
-//      }
-//
-//    }
+    //    display top_populated_location_chart refresh: every(1 #cycle) {
+    //      chart "Top-" + k_node + " populated nodes (highest accumulated traffic)" type: histogram size: {1, 0.5} position: {0, 0} x_label: "Node id" y_label:
+    //      "Accumulated traffic count" {
+    //        datalist legend: (copy_between(top_traffic_nodes, 0, k_node) collect ("Node " + string(each.node_number))) value: (copy_between(top_traffic_nodes, 0, k_node) collect
+    //        each.accum_traffic_count);
+    //      }
+    //
+    //      chart "Top-" + k_road + " populated road (highest accumulated traffic)" type: histogram size: {1, 0.5} position: {0, 0.5} x_label: "Road id" y_label:
+    //      "Accumulated traffic count" {
+    //        datalist legend: (copy_between(top_traffic_roads, 0, k_road) collect ("Road " + string(each.road_number))) value: (copy_between(top_traffic_roads, 0, k_road) collect
+    //        each.accum_traffic_count);
+    //      }
+    //
+    //    }
 
     //    display traffic_density_chart {
     //      chart "Traffic density count series" type: series size: {1, 0.5} position: {0, 0} x_label: "Cycle" y_label: "Count" {

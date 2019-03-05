@@ -154,7 +154,6 @@ global {
       create road {
         int len <- length(myself.shape.points);
         shape <- curve(myself.shape.points[len - 1], myself.shape.points[0], curve_width_eff);
-        //        shape <- line(reverse(myself.shape.points));
         link_length <- myself.link_length;
         free_speed <- myself.free_speed;
         max_capacity <- myself.max_capacity;

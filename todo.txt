@@ -1,0 +1,24 @@
+todo:
+attempt reroute ok VVVVVVVVVV
+
+when unblock still take original path (no radio) vvvvvvvvvvvvvvv
+
+stuck only on the node, not on road vvvvvvvvvvvvvvvvv
+
+counting the number of people that cant find the path vvvvvvvvvvvvvvvvvvvvvvv
+(fix unique people at location)
+
+after that, test big file maybe? vvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+filesaver put empty file in vvvvvvvvvvvvvv
+
+import / export later
+
+do shape file (check note in phone)
+and congest reroute?
+
+
+
+
+
+
