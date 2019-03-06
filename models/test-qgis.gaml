@@ -7,120 +7,160 @@
 model tutorial_gis_city_traffic
 
 global {
-  file shape_file_buildings <- file("../fresh/building.shp");
   file shape_file_roads <- file("../fresh/cacto.shp");
-//  file shape_file_bounds <- file("../includes/bounds.shp");
+  //  file shape_file_nodes <- file("../fresh/node-test.shp");
   geometry shape <- envelope(shape_file_roads);
-  float step <- 10 #mn;
+  float step <- 1 #s;
   int nb_people <- 100;
-  int current_hour update: (time / #hour) mod 24;
-  int min_work_start <- 6;
-  int max_work_start <- 8;
-  int min_work_end <- 16;
-  int max_work_end <- 20;
-  float min_speed <- 1.0 #km / #h;
-  float max_speed <- 5.0 #km / #h;
-  float destroy <- 0.02;
   graph the_graph;
 
   init {
-    create building from: shape_file_buildings with: [type:: string(read("NATURE"))] {
-      if type = "Industrial" {
-        color <- #blue;
+    create road from: shape_file_roads;
+    int road_counter <- 0;
+    ask road {
+      name <- 'road' + string(road_counter);
+      road_counter <- road_counter + 1;
+    }
+
+    //    int node_counter <- 0;
+    //    create testNode from: shape_file_nodes;
+    //    ask testNode {
+    //      name <- 'testNode' + string(node_counter);
+    //      node_number <- node_counter;
+    //      node_counter <- node_counter + 1;
+    //    }
+
+    //        ask road {
+    //          create road {
+    //            shape <- polyline(reverse(myself.shape.points));
+    //          }
+    //    
+    //        }
+
+    //    ask road {
+    //      ask road {
+    //        if (myself.shape.points[0] = self.shape.points[length(self.shape.points) - 1] and self.shape.points[0] = myself.shape.points[length(myself.shape.points) - 1] and self !=
+    //        myself) {
+    //          write string(myself) + " --- " + self;
+    //        }
+    //
+    //        //        write myself.destruction_coeff; // outer = myself, inner=self.
+    //      }
+    //
+    //    }
+    write "------------------";
+    ask road {
+      point start <- shape.points[0];
+      point end <- shape.points[length(shape.points) - 1];
+      if (length(testNode overlapping start) = 0) {
+        create testNode {
+          location <- start;
+        }
+
+      }
+
+      if (length(testNode overlapping end) = 0) {
+        create testNode {
+          location <- end;
+        }
+
       }
 
     }
 
-    create testSpecies number: 50;
-    create road from: shape_file_roads;
-    map<road, float> weights_map <- road as_map (each::(each.destruction_coeff * each.shape.perimeter));
+    map<road, float> weights_map <- road as_map (each::(each.shape.perimeter));
     the_graph <- as_edge_graph(road) with_weights weights_map;
-    list<building> residential_buildings <- building where (each.type = "Residential");
-    list<building> industrial_buildings <- building where (each.type = "Industrial");
-    create people number: nb_people {
-      speed <- min_speed + rnd(max_speed - min_speed);
-      start_work <- min_work_start + rnd(max_work_start - min_work_start);
-      end_work <- min_work_end + rnd(max_work_end - min_work_end);
-      living_place <- one_of(residential_buildings);
-      working_place <- one_of(industrial_buildings);
-      objective <- "resting";
-      location <- any_location_in(living_place);
+    the_graph <- directed(the_graph);
+
+    //      create people {
+    //        location <- testNode(180).location;
+    //        the_target <- testNode(181).location;
+    //        shortest_path <- path_between(the_graph, location, the_target);
+    //      }
+    loop i from: 0 to: nb_people - 1 {
+      bool result <- gen_people();
+      loop while: (result = false) {
+        result <- gen_people();
+      }
+
     }
-    
-    
-    ask road {
-      write shape.points;
-      write "---------------";
-    }
+
+    write length(people);
   }
 
-  reflex update_graph {
-    map<road, float> weights_map <- road as_map (each::(each.destruction_coeff * each.shape.perimeter));
-    the_graph <- the_graph with_weights weights_map;
+  bool gen_people {
+    bool result <- true;
+    create people {
+      int random_origin_index <- rnd(length(testNode) - 1);
+      location <- testNode[random_origin_index].location; // CHANGE HERE
+      int random_dest_index <- rnd(length(testNode) - 1);
+      loop while: random_origin_index = random_dest_index {
+        random_dest_index <- rnd(length(testNode) - 1);
+      }
+
+      the_target <- testNode[random_dest_index].location;
+      try {
+        shortest_path <- path_between(the_graph, location, the_target);
+      }
+
+      catch {
+        result <- false;
+        do die;
+      }
+
+      if (shortest_path = nil or length(shortest_path.edges) = 0) {
+        result <- false;
+        do die;
+      }
+
+    }
+
+    return result;
   }
 
 }
 
 species testSpecies {
-
-  reflex test {
-    write "test123";
-  }
-
 }
 
-species building {
-  string type;
-  rgb color <- #gray;
+species testNode {
+  int node_number;
 
   aspect base {
-    draw shape color: color;
+    draw string(node_number) color: #black font: font('Helvetica', 5, #plain);
+    //    draw circle(50) color: #yellow;
   }
 
 }
 
 species people skills: [moving] {
   rgb color <- #yellow;
-  building living_place <- nil;
-  building working_place <- nil;
-  int start_work;
-  int end_work;
-  string objective;
   point the_target <- nil;
-
-  reflex test {
-    write "people";
-  }
-
-  reflex time_to_work when: current_hour = start_work and objective = "resting" {
-    objective <- "working";
-    the_target <- any_location_in(working_place);
-  }
-
-  reflex time_to_go_home when: current_hour = end_work and objective = "working" {
-    objective <- "resting";
-    the_target <- any_location_in(living_place);
-  }
-
-  reflex move when: the_target != nil {
-    path path_followed <- self goto [target::the_target, on::the_graph, return_path::true];
-    list<geometry> segments <- path_followed.segments;
-    loop line over: segments {
-      float dist <- line.perimeter;
-      ask road(path_followed agent_from_geometry line) {
-        destruction_coeff <- destruction_coeff + (destroy * dist / shape.perimeter);
-      }
-
-    }
-
-    if the_target = location {
-      the_target <- nil;
+  path shortest_path;
+  float speed <- 1 #m / #s;
+  //  reflex move when: the_target != nil {
+  //    path path_followed <- self goto [target::the_target, on::the_graph, return_path::true];
+  //    list<geometry> segments <- path_followed.segments;
+  //    loop line over: segments {
+  //      float dist <- line.perimeter;
+  //    }
+  //
+  //    if the_target = location {
+  //      the_target <- nil;
+  //    }
+  //
+  //  }
+  reflex move {
+    write shortest_path;
+    do follow path: shortest_path;
+    if (self overlaps the_target) {
+      do die;
     }
 
   }
 
   aspect base {
-    draw circle(100) color: color border: #black;
+    draw circle(15) color: color border: #black;
   }
 
 }
@@ -130,10 +170,6 @@ species road {
   int colorValue <- int(255 * (destruction_coeff - 1)) update: int(255 * (destruction_coeff - 1));
   rgb color <- rgb(min([255, colorValue]), max([0, 255 - colorValue]), 0) update: rgb(min([255, colorValue]), max([0, 255 - colorValue]), 0);
 
-  reflex test {
-    write "road";
-  }
-
   aspect base {
     draw shape color: color;
   }
@@ -141,22 +177,11 @@ species road {
 }
 
 experiment road_traffic type: gui {
-  parameter "Shapefile for the buildings:" var: shape_file_buildings category: "GIS";
-  parameter "Shapefile for the roads:" var: shape_file_roads category: "GIS";
-//  parameter "Shapefile for the bounds:" var: shape_file_bounds category: "GIS";
-  parameter "Number of people agents" var: nb_people category: "People";
-  parameter "Earliest hour to start work" var: min_work_start category: "People" min: 2 max: 8;
-  parameter "Latest hour to start work" var: max_work_start category: "People" min: 8 max: 12;
-  parameter "Earliest hour to end work" var: min_work_end category: "People" min: 12 max: 16;
-  parameter "Latest hour to end work" var: max_work_end category: "People" min: 16 max: 23;
-  parameter "minimal speed" var: min_speed category: "People" min: 0.1 #km / #h;
-  parameter "maximal speed" var: max_speed category: "People" max: 10 #km / #h;
-  parameter "Value of destruction when a people agent takes a road" var: destroy category: "Road";
   output {
     display city_display type: opengl {
-      species building aspect: base;
       species road aspect: base;
       species people aspect: base;
+      species testNode aspect: base;
     }
 
     //    display chart_display refresh: every(10 #cycles) {
