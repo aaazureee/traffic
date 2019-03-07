@@ -77,9 +77,9 @@ global {
     //        the_target <- testNode(181).location;
     //        shortest_path <- path_between(the_graph, location, the_target);
     //      }
-    loop i from: 0 to: nb_people - 1 {
+    loop i from: 0 to: nb_people - 1 {         
       bool result <- gen_people();
-      loop while: (result = false) {
+      loop while: !result {
         result <- gen_people();
       }
 
@@ -124,7 +124,7 @@ species testSpecies {
 }
 
 species testNode {
-  int node_number;
+  int node_number <- length(testNode) - 1;
 
   aspect base {
     draw string(node_number) color: #black font: font('Helvetica', 5, #plain);
