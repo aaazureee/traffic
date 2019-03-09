@@ -25,7 +25,10 @@ if reroute (val = 1):
 	+) agent will assume that the graph has no such road, and compute the shortest path
 		- If it cant find the other shortest path, then it will go as normal, normal graph
 		- If it can find the shortest path, go as that path, agent will have the graph of its own. (modified) => CHANGE IN USING TOPOLOGY
+    DONE: vvvvvvvvvvvvvvvvv
 		
+    
+DONE: vvvvvvvvvvvvvvvvvvvvvvvv
 modified graph has to change the same way as normal graph?
 normal graph block a road => modified graph also needs to remove that blocked road
 same case for unblocking action?
@@ -33,7 +36,19 @@ same case for unblocking action?
 
 
 
-read ROAD ID ATTRIBUTE
+
+
+
+
+
+
+
+
+
+
+
+
+CHANGE ROAD SO IT MATCHES FILE ATTRIBUTE FROM SHP!!!!
 
 SCALE DOWN CAPACITY?
 AVG LENGTH OF A CAR

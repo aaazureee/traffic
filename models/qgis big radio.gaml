@@ -9,6 +9,9 @@ global {
   float seed <- 1.0; // rng seed for reproducing the same result (dev mode);
   file shape_file_roads <- file("../fresh/network_links.shp");
   geometry shape <- envelope(shape_file_roads);
+  file strategy_file <- text_file("../fresh/strategies.txt");
+  list<float> alpha_arr <- []; // alpha values will be loaded from file (for re-routing strat)
+  list<float> theta_arr <- []; // theta values will be loaded from file (for re-routing strat)
 
   // Category: people related variables
   int nb_people_init <- 50;
@@ -24,17 +27,16 @@ global {
   int traffic_jam_count -> {length(road where (each.status = "traffic_jam"))};
 
   // Category: road related variables
-  float min_free_speed <- 7.0 #m / #s;
-  float max_free_speed <- 15.0 #m / #s;
   int min_capacity_val <- 5;
   int max_capacity_val <- 10;
 
   // Stats
   list<float> speed_list -> {people collect each.speed};
-  map<string, list> speed_histmap -> {distribution_of(speed_list, 10, min_free_speed, max_free_speed)};
+  map<string, list> speed_histmap -> {distribution_of(speed_list, 10)};
   int nb_people_current -> {length(people)};
   int nb_trips_completed <- 0;
   float avg_speed -> {mean(speed_list)};
+  int total_reroute_count -> {sum(people collect (each.reroute_count))};
 
   // Stats of people who cant find path      
   list<people> list_people_cant_find_path -> {people where (each.cant_find_path and each.is_on_node and !each.stuck_same_location)}; // acumulated number of people who cant find the shortest path during the simulation
@@ -53,18 +55,19 @@ global {
   // orig-dest count
   list<list<int>> orig_dest_matrix;
   bool write_matrix_output <- false;
-
+  
   init {
   // load road network from shape file
-    create road from: shape_file_roads;
-    int road_counter <- 0;
+    create road from: shape_file_roads with: [
+      name:: "road" + read("ID"), 
+      link_length::float(read("length")), 
+      free_speed::float(read("freespeed"))
+      // capacity?
+    ];
+
     ask road {
-      shape <- curve(self.shape.points[0], self.shape.points[length(self.shape.points) - 1], curve_width_eff);      
-      name <- 'road' + string(road_counter);
-      link_length <- shape.perimeter; // link length, default = 2d perimeter
-      free_speed <- (min_free_speed + rnd(max_free_speed - min_free_speed)) with_precision 2;
+      shape <- curve(self.shape.points[0], self.shape.points[length(self.shape.points) - 1], curve_width_eff);
       max_capacity <- min_capacity_val + rnd(max_capacity_val - min_capacity_val);
-      road_counter <- road_counter + 1;
 
       // Create nodes between roads (non-duplicate check)
       point start <- shape.points[0];
@@ -84,21 +87,38 @@ global {
       }
 
     }
-
-//    ask road {
-//      ask road {
-//        if (myself.shape.points[0] = self.shape.points[length(self.shape.points) - 1] and self.shape.points[0] = myself.shape.points[length(myself.shape.points) - 1] and self !=
-//        myself) {
-//          write string(myself) + " --- " + self;
-//          write myself.shape.points;
-//          write self.shape.points;
-//          write "--------";
-//        }
-//
-//        //        write myself.destruction_coeff; // outer = myself, inner=self.
-//      }
-//
-//    }
+    
+    // Load alpha and theta values from file, so when new people are created,
+    // they will have a random strategy among the file input
+    bool header <- true;
+    loop line over: strategy_file {
+      if (!header) {
+        list<string> split_line <- line split_with ",";
+        add float(split_line[0]) to: alpha_arr;
+        add float(split_line[1]) to: theta_arr;
+      }
+      header <- false;
+    }
+    
+    //    write alpha_arr;
+    //    write length(alpha_arr);
+    //    write theta_arr;
+    //    write length(theta_arr);
+        
+    //    ask road {
+    //      ask road {
+    //        if (myself.shape.points[0] = self.shape.points[length(self.shape.points) - 1] and self.shape.points[0] = myself.shape.points[length(myself.shape.points) - 1] and self !=
+    //        myself) {
+    //          write string(myself) + " --- " + self;
+    //          write myself.shape.points;
+    //          write self.shape.points;
+    //          write "--------";
+    //        }
+    //
+    //        //        write myself.destruction_coeff; // outer = myself, inner=self.
+    //      }
+    //
+    //    }
 
     // populate orig dest matrix based on number of nodes
     int max_len <- length(my_node);
@@ -114,7 +134,9 @@ global {
   }
 
   reflex generate_people when: every(spawn_interval) {
+//    reflex generate_people when: every(5) and cycle <= 70 {
     do batch_create_people((min_nb_people_spawn + rnd(max_nb_people_spawn - min_nb_people_spawn)) - 1);
+//    do batch_create_people(5);
   }
 
   action batch_create_people (int number) {
@@ -166,6 +188,10 @@ global {
           num_nodes_to_complete <- length(fixed_edges);
           current_road <- fixed_edges[current_road_index];
           orig_dest_matrix[random_origin_index][random_dest_index] <- orig_dest_matrix[random_origin_index][random_dest_index] + 1;
+          
+          int random_strat_index <- rnd(length(alpha_arr) - 1);
+          alpha <- alpha_arr[random_strat_index];
+          theta <- theta_arr[random_strat_index];                    
           result <- true;
         }
 
@@ -194,7 +220,7 @@ global {
      */
     list<people> selected_people <- people where ((!each.cant_find_path or (each.cant_find_path and !each.is_on_node)) and ((!each.is_in_blocked_road) or (each.is_in_blocked_road
     and each.current_road_index = each.num_nodes_to_complete - 1)));
-    ask selected_people {
+    ask selected_people {      
       if (self overlaps dest) {
         nb_trips_completed <- nb_trips_completed + 1;
         do die;
@@ -214,6 +240,8 @@ global {
       if (is_in_blocked_road and current_road_index = num_nodes_to_complete - 1) {
       //        write "In updating speed, calculating to minigraph";
         current_graph <- mini_graph;
+      } else if (modified_graph != nil) {
+        current_graph <- modified_graph;
       } else {
       //        write "Using normal graph";
         current_graph <- my_graph;
@@ -227,8 +255,7 @@ global {
       //      write "next node: " + next_node;
       //      write "GAMA distance: " + distance_to_next_node;
       if (is_road_jammed = true) {
-        is_road_jammed <- current_road.current_volume = current_road.max_capacity; // is person stuck?
-        speed <- 0 #m / #s;
+        is_road_jammed <- current_road.current_volume = current_road.max_capacity; // is person stuck?        
       }
       //      write string(current_road.current_volume) + "/" + current_road.max_capacity;
       //      write "JAMMED STATUS: " + is_road_jammed;
@@ -241,7 +268,7 @@ global {
           } else {
             ratio <- true_link_length / distance_to_next_node;
           }
-
+                   
           speed <- myself.get_equi_speed(current_road.free_speed, current_road.current_volume, current_road.max_capacity);
           if (is_in_blocked_road = false) {
             if (is_on_node) {
@@ -249,7 +276,7 @@ global {
             }
 
           }
-
+          free_flow_time_needed <- (distance_to_next_node * ratio) / current_road.free_speed;
         }
 
         //        write "RATIO: " + ratio;
@@ -265,10 +292,13 @@ global {
 
     }
 
-    float min_time;
-    min_time <- min(time_list);
+    float min_time <- min(time_list);
     ask selected_people {
       step <- min_time;
+    }
+    
+    ask people {
+      real_time_spent <- real_time_spent + min_time;
     }
 
     if (change_graph_action = true) {
@@ -325,8 +355,15 @@ species people skills: [moving] {
   bool has_radio <- flip(0.5); // whether people is notified of route change globally
   graph mini_graph <- nil; // graph for people already in blocked road but still can move to dest in the same road.
   graph modified_graph <- nil; // graph for people who use re-route strategy.
+  list<road> avoided_road <- [];
   bool moving_in_blocked_road <- false;
   bool stuck_same_location <- true;
+  float alpha;
+  float theta;
+  float real_time_spent <- 0;
+  float free_flow_time_needed <- 0;
+  float free_flow_time_spent <- 0;
+  int reroute_count <- 0;
 
   reflex update_unique_stuck_count when: !stuck_same_location {
     write "I am " + self + ", is now stuck at same location after first cycle";
@@ -381,12 +418,14 @@ species people skills: [moving] {
       current_road.accum_traffic_count <- current_road.accum_traffic_count + 1;
     }
 
-    do follow path: shortest_path;
+    do follow path: shortest_path;    
     is_on_node <- false;
     // Get current agent's graph network to calculate distance
     graph current_graph <- my_graph;
     if (mini_graph != nil) {
       current_graph <- mini_graph;
+    } else if (modified_graph != nil) {
+      current_graph <- modified_graph;
     }
     // Handle epsilon (where calculation between float values with multiples decimals might cause error).
     float distance_to_next_node;
@@ -403,6 +442,7 @@ species people skills: [moving] {
     if (self overlaps next_node) {
       current_road.current_volume <- current_road.current_volume - 1;
       my_node(next_node).accum_traffic_count <- my_node(next_node).accum_traffic_count + 1;
+      free_flow_time_spent <- free_flow_time_spent + free_flow_time_needed; // accumulate previous free flow time calculated from previous node
       // if its the final node
       if (current_road_index = num_nodes_to_complete - 1 or self overlaps dest) {
         nb_trips_completed <- nb_trips_completed + 1;
@@ -455,14 +495,65 @@ species people skills: [moving] {
             current_road <- fixed_edges[current_road_index];
           }
 
-        }
-
+        } 
+        
+        if (is_on_node and !cant_find_path) {
+          do will_reroute(real_time_spent / free_flow_time_spent, current_road.current_volume / current_road.max_capacity);
+        }       
       }
 
     }
 
   }
-
+  
+//  reflex smart_reroute when: is_on_node and !cant_find_path {    
+//    if (free_flow_time_spent = 0) {
+//      return;
+//    }
+//    
+//  }
+  
+  action will_reroute(float normalized_time_spent, float next_link_saturation) {
+    write "Saturation: " + next_link_saturation;
+    write "Norm. time spent: " + normalized_time_spent;
+    float value <- (cos(alpha#to_deg) * normalized_time_spent + sin(alpha#to_deg) * next_link_saturation - theta);    
+    if (value >= 0) {
+      write string(value) + " - true";
+      graph new_graph <- directed(as_edge_graph(road where (!each.hidden and !each.blocked and each != current_road)) with_weights (road as_map (each::each.link_length)));      
+      // try to compute new shortest path avoiding current road if possibile:
+      path new_shortest_path;
+      try {
+        new_shortest_path <- path_between(new_graph, location, dest);
+      }
+    
+      catch {       
+        return;
+      }
+    
+      // check for problem with shortest_path when there are no edges connecting a node
+      if (new_shortest_path != nil and new_shortest_path.shape != nil and (new_shortest_path.shape.points[0] != location or new_shortest_path.shape.points[length(new_shortest_path.shape.points) - 1] !=
+      dest)) {        
+        return;
+      }
+    
+      // if cannot find the shortest path
+      if (new_shortest_path = nil or length(new_shortest_path.edges) = 0) {
+        return;
+      } else {
+        fixed_edges <- new_shortest_path.edges collect (road(each));
+        num_nodes_to_complete <- length(fixed_edges);
+        current_road_index <- 0;
+        current_road <- fixed_edges[current_road_index];
+        cant_find_path <- false;
+        add current_road to: avoided_road;
+        shortest_path <- new_shortest_path;        
+        modified_graph <- new_graph;        
+      }
+      
+    }
+    write string(value) + " - false";    
+  }
+  
   aspect base {
     if (is_in_blocked_road and current_road_index = num_nodes_to_complete - 1) {
       if (clicked = true) {
@@ -513,13 +604,16 @@ species road {
     self.blocked <- true;
     // regenerate new graph without the edge/road just selected
     my_graph <- directed(as_edge_graph(road where (!each.hidden and !each.blocked)) with_weights (road as_map (each::each.link_length)));
-
+    
     // global switch toggle
     change_graph_action <- true;
     ask people {
-    //          write "HERE I AM: " + self;
-    //          write length(people);
-    //      write "Current road: " + current_road;
+      if (modified_graph != nil) {
+        if (length(avoided_road) != 0) {
+          modified_graph <- directed(as_edge_graph(road where (!(avoided_road contains each) and !each.hidden and !each.blocked)) with_weights (road as_map (each::each.link_length)));
+        }
+      }
+      
       bool exit_flag <- false;
       if (cant_find_path = true) {
         exit_flag <- true;
@@ -591,10 +685,9 @@ species road {
     ask people where (each.is_in_blocked_road and (each.current_road_index = (each.num_nodes_to_complete - 1)) and !each.moving_in_blocked_road) {
       moving_in_blocked_road <- true;
       write "Created road!!";
-
-      create road {       
-        shape <- curve(myself.shape.points[0], myself.shape.points[length(myself.shape.points) - 1], curve_width_eff);  
-        link_length <- myself.current_road.shape.perimeter; // double link length test
+      create road {
+        shape <- curve(myself.shape.points[0], myself.shape.points[length(myself.shape.points) - 1], curve_width_eff);
+        link_length <- myself.current_road.link_length;
         free_speed <- myself.current_road.free_speed;
         max_capacity <- myself.current_road.max_capacity;
         hidden <- true;
@@ -621,6 +714,11 @@ species road {
     // global switch toggle
     change_graph_action <- true;
     ask people {
+      if (modified_graph != nil) {
+        if (length(avoided_road) != 0) {
+          modified_graph <- directed(as_edge_graph(road where (!(avoided_road contains each) and !each.hidden and !each.blocked)) with_weights (road as_map (each::each.link_length)));
+        }
+      }
     // people that are stuck in middle of road
       if (self.current_road != nil and self.current_road.shape = myself.shape and is_on_node = false) {
       //      if ((self overlaps myself) and (is_on_node = false)) {
@@ -717,10 +815,9 @@ species road {
 
     if (!hidden) {
       draw shape color: color width: 3;
-    } //
-  } }
+    } } }
 
-  /*
+    /*
  * Node species
  */
 species my_node {
@@ -728,7 +825,7 @@ species my_node {
   int accum_traffic_count <- 0; // accumulated traffic count
   aspect base {
     draw square(50) color: #black;
-    //    draw string(node_number) color: #black font: font('Helvetica', 5, #plain);
+    draw string(node_number) color: #black font: font('Helvetica', 5, #plain);
   }
 
 }
@@ -924,6 +1021,7 @@ experiment my_experiment type: gui {
     //    monitor "Accumulated road traffic sum" value: road_accum_traffic_sum color: #purple;
     //    monitor "Current list of people who cant find path at unique location" value: list_people_cant_find_path color: #aqua;
     //    monitor "Accumulated number of people who cant find path" value: num_people_cant_find_path color: #brown;
+    monitor "Total reroute count" value: total_reroute_count;
   }
 
 }
