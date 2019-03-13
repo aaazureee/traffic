@@ -33,9 +33,7 @@ modified graph has to change the same way as normal graph?
 normal graph block a road => modified graph also needs to remove that blocked road
 same case for unblocking action?
 
-CHANGE ROAD SO IT MATCHES FILE ATTRIBUTE FROM SHP!!!! (only capacity left!!!!)
-
-import / export later (LATER!!!!!!!)
+import / export later (LATER!!!!!!!) vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 
 
