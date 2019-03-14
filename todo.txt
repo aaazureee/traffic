@@ -1,0 +1,41 @@
+todo:
+attempt reroute ok VVVVVVVVVV
+
+when unblock still take original path (no radio) vvvvvvvvvvvvvvv
+
+stuck only on the node, not on road vvvvvvvvvvvvvvvvv
+
+counting the number of people that cant find the path vvvvvvvvvvvvvvvvvvvvvvv
+(fix unique people at location)
+
+after that, test big file maybe? vvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+filesaver put empty file in vvvvvvvvvvvvvv
+
+do shape file (check note in phone) vvvvvvvvvv
+and congest reroute? formula testing
+COUNT times re-route strategy
+
+strategy:
+ONLY COMPUTE WHEN AGENT IS ON THE NODE. (is_on_node)
+(do it at end of smart move, when overlaps node).
+if not reroute, do as normal (val = 0)
+if reroute (val = 1):
+	+) agent will avoid the next congested road (next road on agent's shortest path) until it dies.
+	+) agent will assume that the graph has no such road, and compute the shortest path
+		- If it cant find the other shortest path, then it will go as normal, normal graph
+		- If it can find the shortest path, go as that path, agent will have the graph of its own. (modified) => CHANGE IN USING TOPOLOGY
+    DONE: vvvvvvvvvvvvvvvvv
+		
+    
+DONE: vvvvvvvvvvvvvvvvvvvvvvvv
+modified graph has to change the same way as normal graph?
+normal graph block a road => modified graph also needs to remove that blocked road
+same case for unblocking action?
+
+import / export later (LATER!!!!!!!) vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
+
+
+
+
+
