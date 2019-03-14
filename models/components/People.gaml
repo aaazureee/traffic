@@ -32,7 +32,6 @@ species people skills: [moving] {
   float real_time_spent <- 0.0;
   float free_flow_time_needed <- 0.0;
   float free_flow_time_spent <- 0.0;
-  int reroute_count <- 0;
 
   reflex update_unique_stuck_count when: !stuck_same_location {
     write "I am " + self + ", is now stuck at same location after first cycle";
@@ -188,13 +187,13 @@ species people skills: [moving] {
     if (normalized_time_spent < 1 and (1 - normalized_time_spent) <= epsilon) {
       normalized_time_spent <- 1.0;
     }
-//    write "Saturation: " + next_link_saturation;
-//    write "Norm. time spent: " + normalized_time_spent;
+    write "Saturation: " + next_link_saturation;
+    write "Norm. time spent: " + normalized_time_spent;
     
     // Re-route strategy formula:
     float value <- (cos(alpha#to_deg) * normalized_time_spent + sin(alpha#to_deg) * next_link_saturation - theta);    
     if (value >= 0) {
-      reroute_count <- reroute_count + 1;
+      total_reroute_count <- total_reroute_count + 1;
       write string(value) + " - true";
       graph new_graph <- directed(as_edge_graph(road where (!each.hidden and !each.blocked and each != current_road)) with_weights (road as_map (each::each.link_length)));      
       // try to compute new shortest path avoiding current road if possibile:

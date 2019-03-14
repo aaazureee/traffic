@@ -12,9 +12,9 @@ global {
   bool change_graph_action <- false;
   float curve_width_eff <- 0.25;
   float seed <- 1.0; // rng seed for reproducing the same result (dev mode);
-  file shape_file_roads <- file("../fresh/network_links.shp");
+  file shape_file_roads <- file("../input_data/network_links.shp");
   geometry shape <- envelope(shape_file_roads);
-  file strategy_file <- text_file("../fresh/strategies.txt");
+  file strategy_file <- text_file("../input_data/strategies.txt");
   list<float> alpha_arr <- []; // alpha values will be loaded from file (for re-routing strat)
   list<float> theta_arr <- []; // theta values will be loaded from file (for re-routing strat)
 
@@ -43,7 +43,7 @@ global {
   int nb_people_current -> {length(people)};
   int nb_trips_completed <- 0;
   float avg_speed -> {mean(speed_list)};
-  int total_reroute_count -> {sum(people collect (each.reroute_count))};
+  int total_reroute_count <- 0;
 
   // Stats of people who cant find path      
   list<people> list_people_cant_find_path -> {people where (each.cant_find_path and each.is_on_node and !each.stuck_same_location)}; // acumulated number of people who cant find the shortest path during the simulation
@@ -135,14 +135,15 @@ global {
 
     // init people
     do batch_create_people(nb_people_init);
+//    do batch_create_people(10);
     create file_saver number: 1;
     //    write length(people);
   }
 
   reflex generate_people when: every(spawn_interval) {
-  //    reflex generate_people when: every(5) and cycle <= 70 {
+//      reflex generate_people when: every(5#cycle) {
     do batch_create_people(min_nb_people_spawn + rnd(max_nb_people_spawn - min_nb_people_spawn));
-    //    do batch_create_people(5);
+//        do batch_create_people(5);
   }
 
   action batch_create_people (int number) {
@@ -403,13 +404,13 @@ experiment my_experiment type: gui {
     }
 
     display speed_chart {
-      chart "Average speed series" type: series size: {1, 0.5} position: {0, 0} x_label: "Cycle" y_label: "Average speed (m/s)" {
+      chart "Average speed series" type: series size: {1, 0.5} position: {0.25, 0} x_label: "Cycle" y_label: "Average speed (m/s)" {
         data "Average speed" value: avg_speed color: #deepskyblue;
       }
 
-      chart "Speed distribution" type: histogram size: {1, 0.5} position: {0, 0.5} x_label: "Speed bin (m/s)" y_label: "Frequency" {
-        datalist speed_histmap at "legend" value: speed_histmap at "values";
-      }
+//      chart "Speed distribution" type: histogram size: {1, 0.5} position: {0, 0.5} x_label: "Speed bin (m/s)" y_label: "Frequency" {
+//        datalist speed_histmap at "legend" value: speed_histmap at "values";
+//      }
 
     }
 
