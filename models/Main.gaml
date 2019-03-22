@@ -345,7 +345,7 @@ global {
 
 }
 
-experiment my_experiment type: gui {
+experiment traffic_simulation type: gui {
   parameter "Min number people spawn per interval:" var: min_nb_people_spawn category: "People";
   parameter "Max number people spawn per interval:" var: max_nb_people_spawn category: "People";
   parameter "Spawn interval (in cycle):" var: spawn_interval category: "People";

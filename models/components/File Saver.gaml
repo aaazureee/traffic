@@ -5,10 +5,10 @@ import "../Main.gaml"
  */
 species file_saver {
 // result (data output) directory
-  file result_dir <- folder('./traffic-results');
-  string node_stats_file <- "./traffic-results/node-stats.txt";
-  string road_stats_file <- "./traffic-results/road-stats.txt";
-  string matrix_stats_file <- './traffic-results/matrix_stats.txt';
+  file result_dir <- folder('../traffic-results');
+  string node_stats_file <- "../traffic-results/node-stats.txt";
+  string road_stats_file <- "../traffic-results/road-stats.txt";
+  string matrix_stats_file <- '../traffic-results/matrix-stats.txt';
 
   // input header for first time only
   init {
