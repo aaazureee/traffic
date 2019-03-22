@@ -175,26 +175,20 @@ species people skills: [moving] {
 
   }
   
-//  reflex smart_reroute when: is_on_node and !cant_find_path {    
-//    if (free_flow_time_spent = 0) {
-//      return;
-//    }
-//    
-//  }
   
   action will_reroute(float normalized_time_spent, float next_link_saturation) {
     float epsilon <- 10 ^ -5;
     if (normalized_time_spent < 1 and (1 - normalized_time_spent) <= epsilon) {
       normalized_time_spent <- 1.0;
     }
-    write "Saturation: " + next_link_saturation;
-    write "Norm. time spent: " + normalized_time_spent;
+//    write "Saturation: " + next_link_saturation;
+//    write "Norm. time spent: " + normalized_time_spent;
     
     // Re-route strategy formula:
     float value <- (cos(alpha#to_deg) * normalized_time_spent + sin(alpha#to_deg) * next_link_saturation - theta);    
     if (value >= 0) {
       total_reroute_count <- total_reroute_count + 1;
-      write string(value) + " - true";
+//      write string(value) + " - true";
       graph new_graph <- directed(as_edge_graph(road where (!each.hidden and !each.blocked and each != current_road)) with_weights (road as_map (each::each.link_length)));      
       // try to compute new shortest path avoiding current road if possibile:
       path new_shortest_path;
@@ -226,9 +220,7 @@ species people skills: [moving] {
         modified_graph <- new_graph;        
       }
       
-    } else {
-//      write string(value) + " - false";  
-    }
+    } 
       
   }
   
@@ -237,14 +229,14 @@ species people skills: [moving] {
       if (clicked = true) {
         draw circle(2) at: self.location color: #yellow;
         draw circle(2) at: self.dest color: #cyan;
-        draw polyline([self.location, self.dest]) color: #pink width: 5;
+        draw polyline([self.location, self.dest]) color: #orchid width: 5;
       }
 
     } else if (clicked = true and cant_find_path = false) {
       path new_path <- path_between(my_graph, location, dest);
       draw circle(2) at: point(new_path.source) color: #yellow;
       draw circle(2) at: point(new_path.target) color: #cyan;
-      draw new_path.shape color: #pink width: 5;
+      draw new_path.shape color: #orchid width: 5;
     }
     
     // Colorize people agent differently based on characteristic
@@ -257,7 +249,7 @@ species people skills: [moving] {
     }
 
     if (is_in_blocked_road = true) {
-      draw triangle(55) color: color;
+      draw triangle(65) color: color;
     } else {
       draw circle(50) color: color;
     }

@@ -45,9 +45,8 @@ global {
   float avg_speed -> {mean(speed_list)};
   int total_reroute_count <- 0;
 
-  // Stats of people who cant find path      
-  list<people> list_people_cant_find_path -> {people where (each.cant_find_path and each.is_on_node and !each.stuck_same_location)}; // acumulated number of people who cant find the shortest path during the simulation
-  int num_people_cant_find_path <- 0;
+  // Stats of people who cant find path        
+  int num_people_cant_find_path <- 0; // acumulated number of people who cant find the shortest path during the simulation
 
   // Node accumulated traffic count
   list<my_node> top_traffic_nodes -> {my_node sort_by -each.accum_traffic_count};
@@ -318,7 +317,7 @@ global {
       change_graph_action <- false;
     }
 
-    write "-----------";
+//    write "-----------";
   }
 
   // BPR equation
@@ -424,7 +423,6 @@ experiment my_experiment type: gui {
     monitor "Average speed" value: avg_speed with_precision 2 color: #deepskyblue;
     monitor "Accumulated node traffic sum" value: node_accum_traffic_sum color: #crimson;
     monitor "Accumulated road traffic sum" value: road_accum_traffic_sum color: #purple;
-    monitor "Current list of people who cant find path at unique location" value: list_people_cant_find_path color: #aqua;
     monitor "Accumulated number of people who cant find path" value: num_people_cant_find_path color: #brown;
     monitor "Total reroute count" value: total_reroute_count;
   }

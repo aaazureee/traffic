@@ -23,7 +23,6 @@ species road {
   user_command "View direction" action: view_direction;
 
   action block {
-    write "block .";
     self.blocked <- true;
     // regenerate new graph without the edge/road just selected
     my_graph <- directed(as_edge_graph(road where (!each.hidden and !each.blocked)) with_weights (road as_map (each::each.link_length)));
