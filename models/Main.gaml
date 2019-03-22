@@ -404,7 +404,7 @@ experiment my_experiment type: gui {
     }
 
     display speed_chart {
-      chart "Average speed series" type: series size: {1, 0.5} position: {0.25, 0} x_label: "Cycle" y_label: "Average speed (m/s)" {
+      chart "Average speed series" type: series size: {1, 0.5} position: {0, 0.25} x_label: "Cycle" y_label: "Average speed (m/s)" {
         data "Average speed" value: avg_speed color: #deepskyblue;
       }
 
