@@ -41,14 +41,14 @@ Navigate to `~/models/Main.gaml` and run `traffic_simulation` experiment
     │   ├───People.gaml
     │   └───Road.gaml
     ├───traffic-results/
-    │   ├───matrix_stats.txt
+    │   ├───matrix-stats.txt
     │   ├───node-stats.txt
     │   └───road-stats.txt
     └───Main.gaml
 ```
 
 ## Detailed documentation
-Please refer to this report for detailed documentation of this model.
+Please refer to this [report](report.pdf) for detailed documentation of this model.
 
 ## Authors and acknowledgment
 * [Hieu Chu](mailto:chc116@uowmail.edu.au), University of Wollongong.
