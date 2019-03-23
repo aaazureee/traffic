@@ -5,24 +5,29 @@ import "./components/Road.gaml"
 import "./components/People.gaml"
 import "./components/File Saver.gaml"
 
+/** 
+ * Global species that determine the environment for the simulation
+ * 
+ * @author Hieu Chu (chc116@uowmail.edu.au)
+ */
 global {
-  graph my_graph;
-  list<point> nodes;
+  float seed <- 1.0; // rng seed for reproducing the same result
+  graph my_graph; // road network graph
+  list<point> nodes; // list of nodes connecting roads
   list<float> time_list; // list of time to arrive to next node;  
-  bool change_graph_action <- false;
-  float curve_width_eff <- 0.25;
-  float seed <- 1.0; // rng seed for reproducing the same result (dev mode);
-  file shape_file_roads <- file("../input_data/network_links.shp");
-  geometry shape <- envelope(shape_file_roads);
-  file strategy_file <- text_file("../input_data/strategies.txt");
+  bool change_graph_action <- false; // global action (block or unblock has been applied)
+  float curve_width_eff <- 0.25; // the width of the curve for road representation  
+  file shape_file_roads <- file("../input_data/network_links.shp"); // shape file for generating road network
+  geometry shape <- envelope(shape_file_roads); // boundary of environment
+  file strategy_file <- text_file("../input_data/strategies.txt"); // reroute strategy weights input file
   list<float> alpha_arr <- []; // alpha values will be loaded from file (for re-routing strat)
   list<float> theta_arr <- []; // theta values will be loaded from file (for re-routing strat)
 
   // Category: people related variables
-  int nb_people_init <- 50;
-  int min_nb_people_spawn <- 10 min: 0 max: 99;
-  int max_nb_people_spawn <- 20 min: 0 max: 99;
-  int spawn_interval <- 10 min: 0 max: 99;
+  int nb_people_init <- 50; // number of initialized people
+  int min_nb_people_spawn <- 10 min: 0 max: 99; // minimum number of people spawn
+  int max_nb_people_spawn <- 20 min: 0 max: 99; // maximum number of people spawn
+  int spawn_interval <- 10 min: 0 max: 99; // spawn interval for generating new people agent
   float radio_prob <- 0.5 min: 0 max: 1; // probability that a single people agent will have global radio
   float smart_strategy_prob <- 0.51 min: 0 max: 1; // probability that a single people agent will have a smart re-route strategy
 
@@ -38,38 +43,38 @@ global {
   int max_capacity_val <- 10;
 
   // Stats
-  list<float> speed_list -> {people collect each.speed};
-  map<string, list> speed_histmap -> {distribution_of(speed_list, 10)};
-  int nb_people_current -> {length(people)};
-  int nb_trips_completed <- 0;
-  float avg_speed -> {mean(speed_list)};
-  int total_reroute_count <- 0;
+  list<float> speed_list -> {people collect each.speed}; // for speed chart
+  int nb_people_current -> {length(people)}; // current number of people
+  int nb_trips_completed <- 0; // number of trips completed
+  float avg_speed -> {mean(speed_list)}; // average speed stats
+  int total_reroute_count <- 0; // total number of times a reroute strategy has been successfully applied
 
   // Stats of people who cant find path        
   int num_people_cant_find_path <- 0; // acumulated number of people who cant find the shortest path during the simulation
 
   // Node accumulated traffic count
-  list<my_node> top_traffic_nodes -> {my_node sort_by -each.accum_traffic_count};
+  list<my_node> top_traffic_nodes -> {my_node sort_by -each.accum_traffic_count}; // top-k populated nodes
   int node_accum_traffic_sum -> {sum(top_traffic_nodes collect each.accum_traffic_count)};
   int k_node <- 10 min: 1 max: 20; // top-k populated nodes to display chart
 
   // Road accumulated traffic count
-  list<road> top_traffic_roads -> {road sort_by -each.accum_traffic_count};
+  list<road> top_traffic_roads -> {road sort_by -each.accum_traffic_count}; // top-k populated roads
   int road_accum_traffic_sum -> {sum(top_traffic_roads collect (each.accum_traffic_count))};
   int k_road <- 10 min: 1 max: 20; // top-k populated roads to display chart
 
   // orig-dest count
-  list<list<int>> orig_dest_matrix;
-  bool write_matrix_output <- false;
-
+  list<list<int>> orig_dest_matrix; // 2d array for storing origin destination matrix
+  bool write_matrix_output <- false; // default option: not storing matrix to output file
+  
   init {
   // load road network from shape file
     create road from: shape_file_roads with: [
-      name:: "road" + read("ID"), 
-      link_length::float(read("length")), 
-      free_speed::float(read("freespeed"))
+      name:: "road" + read("ID"),
+       link_length::float(read("length")),
+        free_speed::float(read("freespeed"))
     ];
     ask road {
+      // change shape of road to curve to select block and unblock individually for bidirectional road
       shape <- curve(self.shape.points[0], self.shape.points[length(self.shape.points) - 1], curve_width_eff);
       max_capacity <- min_capacity_val + rnd(max_capacity_val - min_capacity_val);
 
@@ -105,50 +110,40 @@ global {
       header <- false;
     }
 
-    //    write alpha_arr;
-    //    write length(alpha_arr);
-    //    write theta_arr;
-    //    write length(theta_arr);
-
-    //    ask road {
-    //      ask road {
-    //        if (myself.shape.points[0] = self.shape.points[length(self.shape.points) - 1] and self.shape.points[0] = myself.shape.points[length(myself.shape.points) - 1] and self !=
-    //        myself) {
-    //          write string(myself) + " --- " + self;
-    //          write myself.shape.points;
-    //          write self.shape.points;
-    //          write "--------";
-    //        }
-    //
-    //        //        write myself.destruction_coeff; // outer = myself, inner=self.
-    //      }
-    //
-    //    }
-
+ 
     // populate orig dest matrix based on number of nodes
     int max_len <- length(my_node);
     orig_dest_matrix <- list_with(max_len, list_with(max_len, 0));
 
-    // generate graph
+    // generate directed graph, with weights equal to road link length
     my_graph <- directed(as_edge_graph(road where (!each.hidden)) with_weights (road as_map (each::each.link_length)));
 
     // init people
     do batch_create_people(nb_people_init);
-//    do batch_create_people(10);
-    create file_saver number: 1;
-    //    write length(people);
+    create file_saver number: 1; // create file saver helper class to generate output txt file
   }
-
+  
+  /**
+   * Reflex function that will generate people after every n interval
+   * 
+   * @param spawn_interval the number of cycles before a new batch of people agent is created
+   */  
   reflex generate_people when: every(spawn_interval) {
-//      reflex generate_people when: every(5#cycle) {
     do batch_create_people(min_nb_people_spawn + rnd(max_nb_people_spawn - min_nb_people_spawn));
-//        do batch_create_people(5);
   }
+  
+  /**
+   * Function to batch generate people agent with valid origin and destination 
+   * (ensure that a shortest path is found)
+   * 
+   * @param number number of people agent to be created
+   */
 
   action batch_create_people (int number) {
     if (number = 0) {
       return;
     }
+
     loop i from: 0 to: number - 1 {
       bool result <- create_people();
       loop while: !result {
@@ -159,12 +154,19 @@ global {
 
   }
 
-  // private helper function
+  /**
+   * Private helper function to create a single people agent with random origin and destination
+   * and generate the shortest path, increment the value in origin - destination matrix,
+   * feed weights to people agent who has_smart_strategy = true
+   * 
+   * @return true if people agent can find shortest path, false otherwise
+   */
   bool create_people {
     bool result <- true;
     create people {
+      // generate random origin, dest and shortest path between them
       int random_origin_index <- rnd(length(my_node) - 1);
-      location <- my_node[random_origin_index].location; // CHANGE HERE
+      location <- my_node[random_origin_index].location; 
       int random_dest_index <- rnd(length(my_node) - 1);
       loop while: random_origin_index = random_dest_index {
         random_dest_index <- rnd(length(my_node) - 1);
@@ -174,7 +176,8 @@ global {
       try {
         shortest_path <- path_between(my_graph, location, dest);
       }
-
+      
+      // if no possible path, remove the agent
       catch {
         result <- false;
         do die;
@@ -186,18 +189,19 @@ global {
         result <- false;
         do die;
       }
-
+    
       if (cant_find_path = false) {
         if (shortest_path = nil or length(shortest_path.edges) = 0) {
           result <- false;
           do die;
         } else {
-        // Fixed road path          
+          // If there is a shortest path found, setup people agents variable       
           fixed_edges <- shortest_path.edges collect (road(each));
           num_nodes_to_complete <- length(fixed_edges);
           current_road <- fixed_edges[current_road_index];
           orig_dest_matrix[random_origin_index][random_dest_index] <- orig_dest_matrix[random_origin_index][random_dest_index] + 1;
           result <- true;
+          // feed people agent alpha and theta weights from input file
           if (has_smart_strategy) {
             int random_strat_index <- rnd(length(alpha_arr) - 1);
             alpha <- alpha_arr[random_strat_index];
@@ -207,7 +211,8 @@ global {
         }
 
       }
-
+      
+      // Set initial speed to 0 m/s
       speed <- 0 #m / #s;
       // increment traffic count at source location node
       my_node(location).accum_traffic_count <- my_node(location).accum_traffic_count + 1;
@@ -215,6 +220,12 @@ global {
 
     return result;
   }
+  
+  /**
+   * Reflex function that will select the minimum time of all people agents to reach their immediate
+   * next node and set the global time equal to that. This preprocessing function will ensure that 
+   * people agents variable are set correctly before they are able to travel
+   */
 
   reflex update_min_time {
     time_list <- [];
@@ -240,46 +251,42 @@ global {
       current_road <- fixed_edges[current_road_index];
       int len <- length(current_road.shape.points);
       next_node <- current_road.shape.points[len - 1];
-      //      write next_node;
-      // current road segment
-      float true_link_length <- current_road.link_length; // link length (real_)
-      //      write "True link length: " + true_link_length;
+      float true_link_length <- current_road.link_length; 
       float distance_to_next_node;
-      // distance along the curve (must use graph topology because normal distance is euclidean distance
-      // i.e. not distance on the curve, which is what we want).
+      
       graph current_graph;
       if (is_in_blocked_road and current_road_index = num_nodes_to_complete - 1) {
-      //        write "In updating speed, calculating to minigraph";
-        current_graph <- mini_graph;
+        current_graph <- mini_graph; // graph for people inside blocked road and destination in the same road
       } else if (modified_graph != nil) {
-        current_graph <- modified_graph;
+        current_graph <- modified_graph; // graph for people who has applied rerouting strategy
       } else {
-      //        write "Using normal graph";
-        current_graph <- my_graph;
+        current_graph <- my_graph; // normal graph
       }
-
+      
+      // set topology differently based on the graph of each people agent
+      // to calculate distance correctly
       using topology(current_graph) {
         distance_to_next_node <- self distance_to next_node; // gama distance (2d graph)
       }
-      //      float distance_to_next_node <- self distance_to next_node; // gama distance (2d graph)
-      //      float distance_to_next_node <- topology(current_road) distance_between [self, next_node];
-      //      write "next node: " + next_node;
-      //      write "GAMA distance: " + distance_to_next_node;
+      
+      // update if next road on the shortest path is jammed (full capacity)
       if (is_road_jammed = true) {
-        is_road_jammed <- current_road.current_volume = current_road.max_capacity; // is person stuck?        
+        is_road_jammed <- current_road.current_volume = current_road.max_capacity;      
       }
-      //      write string(current_road.current_volume) + "/" + current_road.max_capacity;
-      //      write "JAMMED STATUS: " + is_road_jammed;
-      if (is_road_jammed = false) { // only do stuff is road is not jammed
-      // FIND initial RATIO + speed at start of each road
+    
+      // people agent can only travel if road is not at full capacity
+      if (is_road_jammed = false) { 
+      // Find initial ratio + speed at start of each road
         if (is_on_node = true or change_graph_action = true) {
         // Handle special road blockage, re-calculate things
+        // ratio is to convert 2D distance in GAMA graph to the link length specified (real world distance)
           if (change_graph_action = true) {
             ratio <- true_link_length / current_road.shape.perimeter;
           } else {
             ratio <- true_link_length / distance_to_next_node;
           }
-
+          
+          // Calculate equilibrium speed based on get_equi_speed function
           speed <- myself.get_equi_speed(current_road.free_speed, current_road.current_volume, current_road.max_capacity);
           if (is_in_blocked_road = false) {
             if (is_on_node) {
@@ -287,23 +294,20 @@ global {
             }
 
           }
-
+          
+          // Calculate free flow time needed to reach the next node
           free_flow_time_needed <- (distance_to_next_node * ratio) / current_road.free_speed;
         }
 
-        //        write "RATIO: " + ratio;
+
         real_dist_to_next_node <- distance_to_next_node * ratio;
         float travel_time <- real_dist_to_next_node / speed;
-        //        write string(self) + ", speed: " + speed + ", travel time: " + travel_time;
-        //        write "Travelled: " + (speed * travel_time);
-        //        write "Location: " + location;
-        //        write "Real dist to next node: " + real_dist_to_next_node;
         add travel_time to: time_list;
-        //        write "//////////////";
       }
 
     }
-
+    
+    // Set global minimum time
     float min_time <- min(time_list);
     ask selected_people {
       step <- min_time;
@@ -317,13 +321,26 @@ global {
       change_graph_action <- false;
     }
 
-//    write "-----------";
   }
 
-  // BPR equation
+  /**
+   * Returns the equilibrium speed so that people that arrive later
+   * at the road (while there are already people on the road), will have
+   * lower speed, so that they cannot overtake each other in 1 lane road.
+   * 
+   * @params free_speed free flow speed of the road
+   * @params current_volume current volume of the road
+   * @params max_capacity maximum capacity of the road
+   * @return the true speed value of people agent on the road
+   */
   float get_equi_speed (float free_speed, int current_volume, int max_capacity) {
     return free_speed / (1 + 0.15 * (current_volume / max_capacity) ^ 4);
   }
+  
+  /**
+   * GUI function that enable clicking of people agent in simulation display
+   * to show the shortest path on the graph (in orchid color).
+   */
 
   action show_shortest_path {
     geometry circ <- circle(55, #user_location);
@@ -344,6 +361,11 @@ global {
   }
 
 }
+
+/**
+ * GAMA experiment, includes inspect variables view that user can dyanmically change the value during simulation
+ * and data visualization charts, live monitoring of variables
+ */
 
 experiment traffic_simulation type: gui {
   parameter "Min number people spawn per interval:" var: min_nb_people_spawn category: "People";
@@ -406,10 +428,6 @@ experiment traffic_simulation type: gui {
       chart "Average speed series" type: series size: {1, 0.5} position: {0, 0.25} x_label: "Cycle" y_label: "Average speed (m/s)" {
         data "Average speed" value: avg_speed color: #deepskyblue;
       }
-
-//      chart "Speed distribution" type: histogram size: {1, 0.5} position: {0, 0.5} x_label: "Speed bin (m/s)" y_label: "Frequency" {
-//        datalist speed_histmap at "legend" value: speed_histmap at "values";
-//      }
 
     }
 

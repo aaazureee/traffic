@@ -1,14 +1,16 @@
 model file_saver
 import "../Main.gaml"
-/*
+ 
+/** 
  * Helper class to save data output to external file
- */
+ * 
+ * @author Hieu Chu (chc116@uowmail.edu.au)
+ */ 
 species file_saver {
-// result (data output) directory
-  file result_dir <- folder('../traffic-results');
-  string node_stats_file <- "../traffic-results/node-stats.txt";
-  string road_stats_file <- "../traffic-results/road-stats.txt";
-  string matrix_stats_file <- '../traffic-results/matrix-stats.txt';
+  file result_dir <- folder('./traffic-results'); // result (data output) directory
+  string node_stats_file <- "./traffic-results/node-stats.txt";
+  string road_stats_file <- "./traffic-results/road-stats.txt";
+  string matrix_stats_file <- './traffic-results/matrix-stats.txt';
 
   // input header for first time only
   init {
@@ -63,7 +65,7 @@ species file_saver {
     save road_header to: road_stats_file type: "text";
   }
 
-  // orig_dest stats file header
+  // orig_dest matrix stats output
   action write_matrix_output {
     string matrix_header <- "Cycle: " + cycle + "\r\n";
     loop i from: 0 to: length(orig_dest_matrix) - 1 {
