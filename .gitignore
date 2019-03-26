@@ -1,4 +1,4 @@
-/models/traffic-results/*
+**/traffic-results/*
 
 !/**/.gitkeep
 todo.txt

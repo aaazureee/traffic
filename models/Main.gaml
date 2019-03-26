@@ -38,9 +38,8 @@ global {
   int extreme_count -> {length(road where (each.status = "extreme"))};
   int traffic_jam_count -> {length(road where (each.status = "traffic_jam"))};
 
-  // Category: road related variables
-  int min_capacity_val <- 5;
-  int max_capacity_val <- 10;
+  // Category: road capacity scale
+  int capacity_scale <- 300 min: 1; // scale down the max capacity of roads in road network
 
   // Stats
   list<float> speed_list -> {people collect each.speed}; // for speed chart
@@ -70,13 +69,13 @@ global {
   // load road network from shape file
     create road from: shape_file_roads with: [
       name:: "road" + read("ID"),
-       link_length::float(read("length")),
-        free_speed::float(read("freespeed"))
+      link_length::float(read("length")),
+      free_speed::float(read("freespeed")),
+      max_capacity::(int(read("capacity")) / capacity_scale) // scale down capacity of roads based on global capacity scale ratio
     ];
     ask road {
       // change shape of road to curve to select block and unblock individually for bidirectional road
       shape <- curve(self.shape.points[0], self.shape.points[length(self.shape.points) - 1], curve_width_eff);
-      max_capacity <- min_capacity_val + rnd(max_capacity_val - min_capacity_val);
 
       // Create nodes between roads (non-duplicate check)
       point start <- shape.points[0];
@@ -373,6 +372,7 @@ experiment traffic_simulation type: gui {
   parameter "Spawn interval (in cycle):" var: spawn_interval category: "People";
   parameter "Radio probability" var: radio_prob category: "People";
   parameter "Smart strategy probability" var: smart_strategy_prob category: "People";
+  parameter "Road network capacity scale down" var: capacity_scale category: "Road network";
   parameter "Road network shape file" var: shape_file_roads category: "File";
   parameter "Write matrix output: " var: write_matrix_output category: "File";
   output {
